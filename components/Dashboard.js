@@ -28,12 +28,13 @@ import {
   faComputerMouse,
   faFileWaveform,
   faSignOut,
+  faCog,
 } from '@fortawesome/free-solid-svg-icons';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { QC_API } from '../public/config';
 import { useTheme } from 'react-native-paper';
 
-library.add(faBars);
+library.add(faBars, faCog);
 
 const { width, height } = Dimensions.get('window');
 
@@ -350,12 +351,12 @@ const Dashboard = props => {
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
                     style={styles.button}
-                    onPress={() => props.navigation.navigate('Device')}>
+                    onPress={() => props.navigation.navigate('ConfigurationPage')}>
                     <FontAwesomeIcon
-                      icon={faComputer}
+                      icon={faCog}
                       style={styles.DashIcon}
                     />
-                    <Text style={styles.buttonText}>Devices</Text>
+                    <Text style={styles.buttonText}>Configuration</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.button}

@@ -25,6 +25,7 @@ import { SafeAreaView, StatusBar, useColorScheme } from 'react-native';
 import { LightScheme } from './components/themes/lightScheme';
 import { DarkScheme } from './components/themes/darkScheme';
 import RoleManagement from './components/RoleManagement';
+import ConfigurationPage from './components/ConfigurationPage';
 
 const Stack = createNativeStackNavigator();
 // const Drawer = createDrawerNavigator();
@@ -71,6 +72,7 @@ function App() {
           <Stack.Screen name="Excel" component={Excel} />
           <Stack.Screen name="User" component={User} />
           <Stack.Screen name="RoleManagement" component={RoleManagement} />
+          <Stack.Screen name='ConfigurationPage' component={ConfigurationPage}/>
         </Stack.Navigator>
       </PaperProvider>
     </NavigationContainer>
