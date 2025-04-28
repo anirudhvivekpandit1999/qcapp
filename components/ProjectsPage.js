@@ -14,16 +14,6 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { Text, useTheme } from "react-native-paper";
 import { QC_API } from "../public/config";
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import {
-  faProjectDiagram,
-  faPlus,
-  faCalendarAlt,
-  faInfoCircle,
-  faTimes,
-  faServer
-} from '@fortawesome/free-solid-svg-icons';
-import Background from './Background';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 const { width, height } = Dimensions.get('window');
@@ -56,28 +46,43 @@ const ProjectsPage = ({ navigation }) => {
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
+      paddingHorizontal: 16,
+    },
+    headerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 20,
     },
     header: {
       fontSize: width * 0.06,
       fontWeight: 'bold',
       color: theme.colors.primary,
-      marginVertical: height * 0.02,
     },
     card: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 8,
-      padding: 16,
-      marginVertical: 8,
-      elevation: 2,
+      borderRadius: 12,
+      padding: 20,
+      marginBottom: 16,
+      elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
     },
     button: {
       backgroundColor: theme.colors.primary,
-      padding: 12,
-      borderRadius: 6,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
       alignItems: 'center',
-      marginVertical: 8,
       flexDirection: 'row',
       justifyContent: 'center',
+      elevation: 2,
+    },
+    buttonText: {
+      color: 'white',
+      fontWeight: '600',
     },
     modalContainer: {
       flex: 1,
@@ -87,54 +92,65 @@ const ProjectsPage = ({ navigation }) => {
     },
     modalContent: {
       backgroundColor: 'white',
-      padding: 20,
-      borderRadius: 8,
+      padding: 24,
+      borderRadius: 16,
       width: '90%',
       maxHeight: '80%',
+    },
+    modalCloseButton: {
+      alignSelf: 'flex-end',
+      padding: 4,
     },
     input: {
       borderWidth: 1,
       borderColor: theme.colors.placeholder,
-      borderRadius: 4,
-      padding: 10,
-      marginVertical: 8,
+      borderRadius: 8,
+      padding: 12,
+      marginVertical: 10,
+      backgroundColor: theme.colors.background,
+      fontSize: 16,
     },
     pickerContainer: {
       borderWidth: 1,
       borderColor: theme.colors.placeholder,
-      borderRadius: 4,
-      marginVertical: 8,
+      borderRadius: 8,
+      marginVertical: 10,
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
     picker: {
       height: 50,
       width: '100%',
-      backgroundColor: theme.colors.surface,
     },
     stepIndicator: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: 'bold',
       color: theme.colors.primary,
-      marginBottom: 16,
+      marginBottom: 20,
+      textAlign: 'center',
     },
-    statusIndicator: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-      alignSelf: 'flex-start',
-      marginTop: 8,
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: 'bold',
-    },
-    kioskBadge: {
-      flexDirection: 'row',
+    emptyStateContainer: {
       alignItems: 'center',
-      backgroundColor: theme.colors.surfaceVariant,
-      padding: 8,
-      borderRadius: 4,
-      marginTop: 8,
+      justifyContent: 'center',
+      marginTop: height * 0.15,
+    },
+    emptyStateText: {
+      fontSize: 16,
+      color: theme.colors.placeholder,
+      textAlign: 'center',
+    },
+    submitButton: {
+      backgroundColor: theme.colors.primary,
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 16,
+      elevation: 2,
+    },
+    submitButtonText: {
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: 16,
     },
   });
 
@@ -159,22 +175,15 @@ const ProjectsPage = ({ navigation }) => {
 
   const getStatusStyle = (status) => {
     switch (status.toLowerCase()) {
-      case 'active':
-        return { backgroundColor: '#d4edda', color: '#155724' };
-      case 'completed':
-        return { backgroundColor: '#d1ecf1', color: '#0c5460' };
-      case 'draft':
-        return { backgroundColor: '#fff3cd', color: '#856404' };
-      default:
-        return { backgroundColor: '#f8d7da', color: '#721c24' };
+      case 'active': return { backgroundColor: '#d4edda', color: '#155724' };
+      case 'completed': return { backgroundColor: '#d1ecf1', color: '#0c5460' };
+      case 'draft': return { backgroundColor: '#fff3cd', color: '#856404' };
+      default: return { backgroundColor: '#f8d7da', color: '#721c24' };
     }
   };
 
   const handleProjectPress = (project) => {
-    navigation.navigate('ProjectDetails', {
-      projectId: project.id,
-      kiosks: project.kiosks || []
-    });
+    navigation.navigate('ProjectDetails', { projectId: project.id, kiosks: project.kiosks || [] });
   };
 
   const handleAddProject = () => {
@@ -188,26 +197,19 @@ const ProjectsPage = ({ navigation }) => {
       const response = await axios.get(`${QC_API}/devices?type=${type}`);
       setDeviceList(response.data);
       setCurrentStep(2);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to fetch devices');
     }
   };
 
-  const handleDeviceSelect = (deviceId) => {
-    setDevice(deviceId);
-    setCurrentStep(3);
-  };
+  const handleDeviceSelect = (deviceId) => { setDevice(deviceId); setCurrentStep(3); };
 
   const handleFormSubmit = async () => {
     try {
-      await axios.post(`${QC_API}/projects`, {
-        kioskType,
-        device,
-        ...formData
-      });
+      await axios.post(`${QC_API}/projects`, { kioskType, device, ...formData });
       setModalVisible(false);
       getProjectList();
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to create project');
     }
   };
@@ -219,10 +221,7 @@ const ProjectsPage = ({ navigation }) => {
           <View>
             <Text style={styles.stepIndicator}>Step 1/3: Select Kiosk Type</Text>
             <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={kioskType}
-                onValueChange={handleKioskSelect}
-                style={styles.picker}>
+              <Picker selectedValue={kioskType} onValueChange={handleKioskSelect} style={styles.picker}>
                 <Picker.Item label="Select Kiosk Type" value="" />
                 <Picker.Item label="PBK" value="PBK" />
                 <Picker.Item label="PFK" value="PFK" />
@@ -230,158 +229,83 @@ const ProjectsPage = ({ navigation }) => {
             </View>
           </View>
         );
-
       case 2:
         return (
           <View>
             <Text style={styles.stepIndicator}>Step 2/3: Select Device</Text>
             <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={device}
-                onValueChange={handleDeviceSelect}
-                style={styles.picker}>
+              <Picker selectedValue={device} onValueChange={handleDeviceSelect} style={styles.picker}>
                 <Picker.Item label="Select Device" value="" />
-                {deviceList.map(device => (
-                  <Picker.Item 
-                    key={device.id} 
-                    label={device.name} 
-                    value={device.id} 
-                  />
-                ))}
+                {deviceList.map(dev => <Picker.Item key={dev.id} label={dev.name} value={dev.id} />)}
               </Picker>
             </View>
           </View>
         );
-
       case 3:
         return (
-          <KeyboardAwareScrollView>
+          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.stepIndicator}>Step 3/3: QC Information</Text>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Job ID"
-              value={formData.jobId}
-              onChangeText={text => setFormData({...formData, jobId: text})}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Design Reference Number"
-              value={formData.designRefNo}
-              onChangeText={text => setFormData({...formData, designRefNo: text})}
-            />
-
+            <TextInput style={styles.input} placeholder="Job ID" value={formData.jobId} onChangeText={text => setFormData({...formData, jobId: text})} />
+            <TextInput style={styles.input} placeholder="Design Reference Number" value={formData.designRefNo} onChangeText={text => setFormData({...formData, designRefNo: text})} />
             <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.osType}
-                onValueChange={value => setFormData({...formData, osType: value})}
-                style={styles.picker}>
+              <Picker selectedValue={formData.osType} onValueChange={value => setFormData({...formData, osType: value})} style={styles.picker}>
                 <Picker.Item label="Select OS Type" value="" />
                 <Picker.Item label="Windows 10 LTSC" value="Windows 10 LTSC" />
                 <Picker.Item label="Windows 10 Pro" value="Windows 10 Pro" />
               </Picker>
             </View>
-
-            <TouchableOpacity 
-              style={styles.button}
-              onPress={handleFormSubmit}>
-              <Text style={{color: 'white'}}>Submit Project</Text>
+            <TouchableOpacity style={styles.submitButton} onPress={handleFormSubmit}>
+              <Text style={styles.submitButtonText}>Submit Project</Text>
             </TouchableOpacity>
           </KeyboardAwareScrollView>
         );
+      default:
+        return null;
     }
   };
 
   const renderProjectCard = (project) => (
-    <TouchableOpacity 
-      key={project.id}
-      style={styles.card}
-      onPress={() => handleProjectPress(project)}>
-      <Text style={{fontSize: 16, fontWeight: 'bold'}}>
-        {project.name}
-      </Text>
-      
+    <TouchableOpacity key={project.id} style={styles.card} onPress={() => handleProjectPress(project)}>
+      <Text style={[styles.header, { fontSize: 18 }]}>{project.name}</Text>
       <View style={[styles.statusIndicator, getStatusStyle(project.status)]}>
-        <Text style={[styles.statusText, { color: getStatusStyle(project.status).color }]}>
-          {project.status}
-        </Text>
+        <Text style={[styles.statusText, { color: getStatusStyle(project.status).color }]}>{project.status}</Text>
       </View>
-
-      <View style={{flexDirection: 'row', marginTop: 8}}>
-        <FontAwesomeIcon icon={faCalendarAlt} color={theme.colors.primary} />
-        <Text style={{marginLeft: 8}}>
-          {new Date(project.createdAt).toLocaleDateString()}
-        </Text>
-      </View>
-
-      {project.kiosks?.length > 0 && (
-        <View style={styles.kioskBadge}>
-          <FontAwesomeIcon 
-            icon={faServer} 
-            size={14} 
-            color={theme.colors.primary} 
-            style={{marginRight: 8}}
-          />
-          <Text>
-            {project.kiosks.length} Kiosk{project.kiosks.length > 1 ? 's' : ''}
-          </Text>
-        </View>
-      )}
     </TouchableOpacity>
   );
 
   return (
-    <Background>
-      <View style={styles.container}>
-        <View style={{padding: 16}}>
-          <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-            <Text style={styles.header}>My Projects</Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleAddProject}>
-              <FontAwesomeIcon icon={faPlus} color="white" />
-              <Text style={{color: 'white', marginLeft: 8}}>New Project</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-          ) : projectList.length === 0 ? (
-            <View style={{alignItems: 'center', marginTop: 40}}>
-              <FontAwesomeIcon 
-                icon={faProjectDiagram} 
-                size={60} 
-                color={theme.colors.placeholder} 
-              />
-              <Text style={{marginTop: 16}}>No projects found</Text>
-            </View>
-          ) : (
-            <ScrollView>
-              {projectList.map(renderProjectCard)}
-            </ScrollView>
-          )}
-        </View>
-
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <TouchableOpacity 
-                style={{alignSelf: 'flex-end'}}
-                onPress={() => setModalVisible(false)}>
-                <FontAwesomeIcon icon={faTimes} size={24} />
-              </TouchableOpacity>
-              
-              {renderModalContent()}
-            </View>
-          </View>
-        </Modal>
+    <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>My Projects</Text>
+        <TouchableOpacity style={styles.button} onPress={handleAddProject}>
+          <Text style={styles.buttonText}>New Project</Text>
+        </TouchableOpacity>
       </View>
-    </Background>
+
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: height * 0.2 }} />
+      ) : projectList.length === 0 ? (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>No projects found{"\n"}Create a new project to get started</Text>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {projectList.map(renderProjectCard)}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      )}
+
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+              <Text>Close</Text>
+            </TouchableOpacity>
+            {renderModalContent()}
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
