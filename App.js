@@ -26,6 +26,8 @@ import { LightScheme } from './components/themes/lightScheme';
 import { DarkScheme } from './components/themes/darkScheme';
 import RoleManagement from './components/RoleManagement';
 import ConfigurationPage from './components/ConfigurationPage';
+import ProjectsPage from './components/ProjectsPage';
+import ProjectDetailsScreen from './components/ProjectDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 // const Drawer = createDrawerNavigator();
@@ -73,6 +75,8 @@ function App() {
           <Stack.Screen name="User" component={User} />
           <Stack.Screen name="RoleManagement" component={RoleManagement} />
           <Stack.Screen name='ConfigurationPage' component={ConfigurationPage}/>
+          <Stack.Screen name = 'ProjectsPage' component={ProjectsPage}/>
+          <Stack.Screen name = 'ProjectDetailsScreen' component={ProjectDetailsScreen}/>
         </Stack.Navigator>
       </PaperProvider>
     </NavigationContainer>
