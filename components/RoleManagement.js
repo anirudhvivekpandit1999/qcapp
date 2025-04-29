@@ -5,13 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  FlatList,
+  ScrollView,
   Alert,
   Dimensions,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import axios from 'axios';
-import { QC_API } from '../public/config'; // Adjust if your config path is different
+import { QC_API } from '../public/config'; // adjust path if needed
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,34 +31,43 @@ const RoleManagement = ({ navigation }) => {
     fetchRoles();
   }, []);
 
-  const fetchRoles = () => {
-    axios
-      .get(QC_API + 'GetRoles')
-      .then(response => {
-        setRoles(response.data);
-      })
-      .catch(error => {
-        console.error(error);
+  const fetchRoles = async () => {
+    try {
+      const { data, status } = await axios.post(QC_API + 'CRUD_Role', {
+        operationFlag: 3,
+        roleId: 0,
       });
+      if (status === 200 && Array.isArray(data.roleList)) {
+        setRoles(data.roleList);
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to load roles');
+    }
   };
 
-  const addRole = () => {
-    if (newRole.trim() === '') {
+  const addRole = async () => {
+    if (!newRole.trim()) {
       Alert.alert('Error', 'Role name cannot be empty');
       return;
     }
-    axios
-      .post(QC_API + 'AddRole', { roleName: newRole })
-      .then(() => {
-        fetchRoles();
-        setNewRole('');
-      })
-      .catch(error => {
-        console.error(error);
+    try {
+      const { status } = await axios.post(QC_API + 'CRUD_Role', {
+        operationFlag: 0,
+        roleName: newRole.trim(),
       });
+      if (status === 200) {
+        setNewRole('');
+        fetchRoles();
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to add role');
+    }
   };
 
   const deleteRole = (roleId) => {
+    console.log(roleId)
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this role?',
@@ -66,36 +75,46 @@ const RoleManagement = ({ navigation }) => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          onPress: () => {
-            axios
-              .delete(QC_API + `DeleteRole/${roleId}`)
-              .then(() => {
-                fetchRoles();
-              })
-              .catch(error => {
-                console.error(error);
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { status } = await axios.post(QC_API + 'CRUD_Role', {
+                operationFlag: 2,
+                roleId : roleId,
               });
+              if (status === 200) {
+                fetchRoles();
+              }
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to delete role');
+            }
           },
         },
       ],
     );
   };
 
-  const updateRole = () => {
-    if (editingRoleName.trim() === '') {
+  const updateRole = async () => {
+    if (!editingRoleName.trim()) {
       Alert.alert('Error', 'Role name cannot be empty');
       return;
     }
-    axios
-      .put(QC_API + `UpdateRole/${editingRoleId}`, { roleName: editingRoleName })
-      .then(() => {
-        fetchRoles();
+    try {
+      const { status } = await axios.post(QC_API + 'CRUD_Role', {
+        operationFlag: 1,
+        roleId: editingRoleId,
+        roleName: editingRoleName.trim(),
+      });
+      if (status === 200) {
         setEditingRoleId(null);
         setEditingRoleName('');
-      })
-      .catch(error => {
-        console.error(error);
-      });
+        fetchRoles();
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to update role');
+    }
   };
 
   const styles = StyleSheet.create({
@@ -113,7 +132,7 @@ const RoleManagement = ({ navigation }) => {
       alignSelf: 'flex-start',
     },
     backButtonText: {
-      color: theme.colors.background,
+      color:"white",
       fontSize: INPUT_FONT_SIZE,
       fontWeight: 'bold',
     },
@@ -136,7 +155,7 @@ const RoleManagement = ({ navigation }) => {
       borderRadius: 10,
       paddingHorizontal: width * 0.03,
       paddingVertical: height * 0.01,
-      color: theme.colors.primary,
+      color: theme.colors.onBackground,
       fontSize: INPUT_FONT_SIZE,
     },
     addButton: {
@@ -146,7 +165,7 @@ const RoleManagement = ({ navigation }) => {
       marginLeft: width * 0.03,
     },
     addButtonText: {
-      color: theme.colors.background,
+      color: "white",
       fontWeight: 'bold',
     },
     roleItem: {
@@ -160,7 +179,7 @@ const RoleManagement = ({ navigation }) => {
     },
     roleText: {
       fontSize: SUBTITLE_FONT_SIZE,
-      color: theme.colors.primary,
+      color: theme.colors.onSurface,
       flex: 1,
     },
     roleButtons: {
@@ -174,56 +193,18 @@ const RoleManagement = ({ navigation }) => {
       borderRadius: 8,
     },
     roleButtonText: {
-      color: theme.colors.background,
+      color: "white",
       fontSize: INPUT_FONT_SIZE - 2,
     },
   });
 
-  const renderRoleItem = ({ item }) => (
-    <View style={styles.roleItem}>
-      {editingRoleId === item.id ? (
-        <TextInput
-          style={styles.input}
-          value={editingRoleName}
-          onChangeText={setEditingRoleName}
-          placeholder="Edit Role Name"
-          placeholderTextColor="#aaa"
-        />
-      ) : (
-        <Text style={styles.roleText}>{item.roleName}</Text>
-      )}
-
-      <View style={styles.roleButtons}>
-        {editingRoleId === item.id ? (
-          <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => updateRole()}>
-            <Text style={styles.roleButtonText}>Save</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => {
-              setEditingRoleId(item.id);
-              setEditingRoleName(item.roleName);
-            }}>
-            <Text style={styles.roleButtonText}>Edit</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={styles.roleButton}
-          onPress={() => deleteRole(item.id)}>
-          <Text style={styles.roleButtonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
   return (
     <View style={styles.container}>
-      
       {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Dashboard')}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
 
@@ -235,18 +216,58 @@ const RoleManagement = ({ navigation }) => {
           value={newRole}
           onChangeText={setNewRole}
           placeholder="Enter Role Name"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.colors.disabled}
         />
         <TouchableOpacity style={styles.addButton} onPress={addRole}>
           <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={roles}
-        keyExtractor={item => item.id.toString()}
-        renderItem={renderRoleItem}
-      />
+      <ScrollView>
+        {roles.map(item => (
+          <View key={item.roleId} style={styles.roleItem}>
+            {editingRoleId === item.roleId ? (
+              <TextInput
+                style={styles.input}
+                value={editingRoleName}
+                onChangeText={setEditingRoleName}
+                placeholder="Edit Role Name"
+                placeholderTextColor={theme.colors.disabled}
+              />
+            ) : (
+              <Text style={styles.roleText}>{item.roleName}</Text>
+            )}
+
+            <View style={styles.roleButtons}>
+              {editingRoleId === item.roleId ? (
+                <TouchableOpacity
+                  style={styles.roleButton}
+                  onPress={updateRole}
+                >
+                  <Text style={styles.roleButtonText}>Save</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.roleButton}
+                  onPress={() => {
+                    setEditingRoleId(item.roleId);
+                    setEditingRoleName(item.roleName);
+                  }}
+                >
+                  <Text style={styles.roleButtonText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={styles.roleButton}
+                onPress={() => deleteRole(item.roleId)}
+              >
+                <Text style={styles.roleButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 };
