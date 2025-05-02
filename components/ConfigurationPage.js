@@ -508,8 +508,9 @@ const ConfigurationPage = props => {
 
     // Checkpoint Functions
     const handleOpenCheckpointModal = (checkpoint = null) => {
+        console.log(checkpoint);
         if (checkpoint) {
-            setCheckpointName(checkpoint.checkpointName || '');
+            
             setCategory(checkpoint.category || '');
             setDescription(checkpoint.description || '');
             setEditingCheckpointId(checkpoint.id);
@@ -519,57 +520,33 @@ const ConfigurationPage = props => {
         }
         setIsCheckpointModalOpen(true);
     };
-
+   
     const resetCheckpointForm = () => {
         setCheckpointName('');
         setCategory('');
         setDescription('');
     };
-
+    
     const handleCloseCheckpointModal = () => {
         setIsCheckpointModalOpen(false);
         resetCheckpointForm();
     };
 
     const handleSaveCheckpoint = async () => {
-        if (!checkpointName || !category || !description) {
-            Alert.alert('Error', 'All fields are required');
-            return;
-        }
-
-        try {
-            const checkpointData = {
-                checkpointName,
-                category,
-                description,
-            };
-
-            let result;
-            if (editingCheckpointId) {
-                // Update existing checkpoint
-                result = await axios.put(`${QC_API}/UpdateCheckPoint/${editingCheckpointId}`, checkpointData);
-                if (result.status === 200) {
-                    Alert.alert('Success', 'Checkpoint updated successfully');
-                    setCheckpoints(prevList => 
-                        prevList.map(checkpoint => 
-                            checkpoint.id === editingCheckpointId ? { ...checkpoint, ...checkpointData } : checkpoint
-                        )
-                    );
-                }
-            } else {
+        
                 // Add new checkpoint
-                result = await axios.post(`${QC_API}/AddCheckPoint`, checkpointData);
+                console.log(checkpointName);
+
+                result = await axios.post(`${QC_API}InsertGeneralPoint`, {CheckPoint : checkpointName});
+                console.log(result.status , "" , result.data);
                 if (result.status === 200) {
                     Alert.alert('Success', 'Checkpoint added successfully');
-                    setCheckpoints(prevList => [...prevList, { id: result.data.id, ...checkpointData }]);
+                    fetchData();
                 }
-            }
+            
             
             handleCloseCheckpointModal();
-        } catch (error) {
-            console.error('Error saving checkpoint:', error);
-            Alert.alert('Error', error.message || 'Failed to save checkpoint');
-        }
+        
     };
 
     const handleDeleteCheckpoint = async (checkpointId) => {
