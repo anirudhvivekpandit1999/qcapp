@@ -243,17 +243,19 @@ const ConfigurationPage = props => {
             switch (activeSection) {
                 case 'deviceList':
                     // Fetch device list
-                    const deviceResponse = await axios.get(`${QC_API}/GetDevices`);
+                    console.log(`${QC_API}GetConfigData`);
+                    const deviceResponse = await axios.post(`${QC_API}GetConfigData`);
+                    console.log(deviceResponse.data);
                     setDeviceList(deviceResponse.data || []);
                     break;
                 case 'deviceModels':
                     // Fetch device models
-                    const modelResponse = await axios.get(`${QC_API}/GetModelTypes`);
+                    const modelResponse = await axios.post(`${QC_API}GetConfigData`);   
                     setDeviceModels(modelResponse.data || []);
                     break;
                 case 'checkpoints':
                     // Fetch checkpoints
-                    const checkpointResponse = await axios.get(`${QC_API}/GetCheckPoints`);
+                    const checkpointResponse = await axios.post(`${QC_API}GetConfigData`);
                     setCheckpoints(checkpointResponse.data || []);
                     break;
             }
