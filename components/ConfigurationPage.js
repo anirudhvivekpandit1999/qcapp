@@ -537,7 +537,7 @@ const ConfigurationPage = props => {
                 // Add new checkpoint
                 console.log(checkpointName);
 
-                result = await axios.post(`${QC_API}InsertGeneralPoint`, {CheckPoint : checkpointName});
+                result = await axios.post(`${QC_API}CRUD_CheckPoints`, {operationFlag : 0 , checkPointDetails : checkpointName});
                 console.log(result.status , "" , result.data);
                 if (result.status === 200) {
                     Alert.alert('Success', 'Checkpoint added successfully');
