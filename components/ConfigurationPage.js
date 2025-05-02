@@ -63,8 +63,47 @@ const ConfigurationPage = props => {
     const [category, setCategory] = useState('');
     const [description, setDescription] = useState('');
     const [editingCheckpointId, setEditingCheckpointId] = useState(null);
+    const [drop , setDrop] = useState([]);
+    const [ selectedDevice, setSelectedDevice] = useState (null);
+   
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     const styles = StyleSheet.create({
+        modalLabel: {
+            fontSize: 16,
+            color: theme.colors.onBackground,
+            marginTop: 12,
+            marginBottom: 4,
+          },
+          dropdownToggle: {
+            borderWidth: 1,
+            borderColor: theme.colors.disabled,
+            borderRadius: 6,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            marginBottom: 4,
+          },
+          dropdownToggleText: {
+            fontSize: 14,
+          },
+          dropdownList: {
+            maxHeight: 150,
+            borderWidth: 1,
+            borderColor: theme.colors.disabled,
+            borderRadius: 6,
+            backgroundColor: theme.colors.surface,
+            marginBottom: 12,
+          },
+          dropdownItem: {
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.disabled,
+          },
+          dropdownItemText: {
+            fontSize: 14,
+            color: theme.colors.onBackground,
+          },
         container: {
             flex: 1,
         },
@@ -245,18 +284,25 @@ const ConfigurationPage = props => {
                     // Fetch device list
                     console.log(`${QC_API}GetConfigData`);
                     const deviceResponse = await axios.post(`${QC_API}GetConfigData`);
-                    console.log(deviceResponse.data);
-                    setDeviceList(deviceResponse.data || []);
+                    console.log(deviceResponse.data.deviceMasterLists);
+                    setDeviceList(deviceResponse.data.deviceMasterLists || []);
                     break;
                 case 'deviceModels':
                     // Fetch device models
-                    const modelResponse = await axios.post(`${QC_API}GetConfigData`);   
-                    setDeviceModels(modelResponse.data || []);
+                    const modelResponse = await axios.post(`${QC_API}GetConfigData`);
+                    const dropDown = modelResponse.data.deviceMasterLists.length > 0 ? 
+                    modelResponse.data.deviceMasterLists.filter((device, index, self) => 
+                      index === self.findIndex(t => t.deviceName === device.deviceName)
+                    ) 
+                  : [];
+                  setDrop(dropDown);
+                    setDeviceModels(modelResponse.data.deviceMasterLists || []);
                     break;
                 case 'checkpoints':
                     // Fetch checkpoints
                     const checkpointResponse = await axios.post(`${QC_API}GetConfigData`);
-                    setCheckpoints(checkpointResponse.data || []);
+                    console.log(checkpointResponse.data.checkPointMasters);
+                    setCheckpoints(checkpointResponse.data.checkPointMasters || []);
                     break;
             }
         } catch (error) {
@@ -557,6 +603,11 @@ const ConfigurationPage = props => {
 
     // Render Functions
     const renderDeviceList = () => {
+        const uniqueDeviceList = deviceList.length > 0 ? 
+        deviceList.filter((device, index, self) => 
+          index === self.findIndex(t => t.deviceName === device.deviceName)
+        ) 
+      : [];
         if (loading) {
             return (
                 <View style={styles.loadingContainer}>
@@ -573,12 +624,12 @@ const ConfigurationPage = props => {
                     <Text style={styles.addButtonText}>Add New Device</Text>
                 </TouchableOpacity>
                 <ScrollView>
-                    {deviceList.length > 0 ? (
-                        deviceList.map((device, index) => (
+                    {uniqueDeviceList.length > 0 ? (
+                        uniqueDeviceList.map((device, index) => (
                             <View key={index} style={styles.card}>
                                 <Text style={styles.cardTitle}>{device.deviceName || 'Unknown Device'}</Text>
-                                <Text style={styles.cardDescription}>Model: {device.deviceModel || 'N/A'}</Text>
-                                <Text style={styles.cardDescription}>Serial: {device.serialNumber || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>Model: {device.deviceTypeName || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>Serial: {device.deviceTypeId || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Status: {device.status || 'Unknown'}</Text>
                                 <View style={styles.actionButtons}>
                                     <TouchableOpacity 
@@ -674,33 +725,97 @@ const ConfigurationPage = props => {
                 </View>
             );
         }
-
+    
+        // Filter models based on selectedDevice
+        const filteredModels = selectedDevice
+            ? deviceModels.filter(m => m.deviceName === selectedDevice.deviceName)
+            : deviceModels;
+    
         return (
             <View style={styles.contentContainer}>
                 <Text style={styles.contentTitle}>Device Models</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => handleOpenModelModal()}>
+    
+                {/* Dropdown for filtering */}
+                <Text style={styles.modalLabel}>Filter by Device Type:</Text>
+                <TouchableOpacity
+                    style={styles.dropdownToggle}
+                    onPress={() => setIsDropdownOpen(prev => !prev)}
+                >
+                    <Text style={[
+                        styles.dropdownToggleText,
+                        !selectedDevice && { color: theme.colors.disabled }
+                    ]}>
+                        {selectedDevice ? selectedDevice.deviceName : 'All Devices'}
+                    </Text>
+                </TouchableOpacity>
+    
+                {isDropdownOpen && (
+                    <ScrollView style={styles.dropdownList}>
+                        <TouchableOpacity
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                                setSelectedDevice(null);
+                                setIsDropdownOpen(false);
+                            }}
+                        >
+                            <Text style={styles.dropdownItemText}>All Devices</Text>
+                        </TouchableOpacity>
+                        {drop.map(d => (
+                            <TouchableOpacity
+                                key={d.deviceId}
+                                style={styles.dropdownItem}
+                                onPress={() => {
+                                    setSelectedDevice(d);
+                                    setIsDropdownOpen(false);
+                                }}
+                            >
+                                <Text style={styles.dropdownItemText}>{d.deviceName}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
+    
+                <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={handleOpenModelModal}
+                >
                     <FontAwesomeIcon icon={faPlus} color="white" size={16} />
                     <Text style={styles.addButtonText}>Add New Model</Text>
                 </TouchableOpacity>
+    
                 <ScrollView>
-                    {deviceModels.length > 0 ? (
-                        deviceModels.map((model, index) => (
-                            <View key={index} style={styles.card}>
-                                <Text style={styles.cardTitle}>{model.modelName || 'Unknown Model'}</Text>
-                                <Text style={styles.cardDescription}>Type: {model.modelType || 'N/A'}</Text>
-                                <Text style={styles.cardDescription}>Manufacturer: {model.manufacturer || 'N/A'}</Text>
+                    {filteredModels.length > 0 ? (
+                        filteredModels.map((model, idx) => (
+                            <View key={idx} style={styles.card}>
+                                <Text style={styles.cardTitle}>
+                                    {model.deviceTypeName || 'Unknown Model'}
+                                </Text>
+                                <Text style={styles.cardDescription}>
+                                    Type: {model.deviceTypeId || 'N/A'}
+                                </Text>
+                                <Text style={styles.cardDescription}>
+                                    Manufacturer: {model.manufacturer || 'N/A'}
+                                </Text>
                                 <View style={styles.actionButtons}>
-                                    <TouchableOpacity 
-                                        style={styles.actionButton} 
+                                    <TouchableOpacity
+                                        style={styles.actionButton}
                                         onPress={() => handleOpenModelModal(model)}
                                     >
-                                        <FontAwesomeIcon icon={faPenToSquare} style={styles.editButton} size={20} />
+                                        <FontAwesomeIcon
+                                            icon={faPenToSquare}
+                                            style={styles.editButton}
+                                            size={20}
+                                        />
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.actionButton}
                                         onPress={() => handleDeleteModel(model.id)}
                                     >
-                                        <FontAwesomeIcon icon={faTrash} style={styles.deleteButton} size={20} />
+                                        <FontAwesomeIcon
+                                            icon={faTrash}
+                                            style={styles.deleteButton}
+                                            size={20}
+                                        />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -709,11 +824,11 @@ const ConfigurationPage = props => {
                         <Text>No device models found</Text>
                     )}
                 </ScrollView>
-
+    
                 {/* Model Modal */}
                 <Modal
                     visible={isModelModalOpen}
-                    transparent={true}
+                    transparent
                     animationType="fade"
                     onRequestClose={handleCloseModelModal}
                 >
@@ -722,40 +837,78 @@ const ConfigurationPage = props => {
                             <Text style={styles.modalTitle}>
                                 {editingModelId ? 'Edit Model' : 'Add New Model'}
                             </Text>
-                            <Field 
-                                placeholder="Model Name" 
+    
+                            <Field
+                                placeholder="Model Name"
+                                value={modelName}
                                 onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setModelName(alphanumericValue);
-                                }} 
-                                value={modelName} 
-                            />
-                            <Field 
-                                placeholder="Model Type" 
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setModelType(alphanumericValue);
+                                    setModelName(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
                                 }}
-                                value={modelType} 
                             />
-                            <Field 
-                                placeholder="Manufacturer" 
+    
+                            <Field
+                                placeholder="Model Type"
+                                value={modelType}
                                 onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setManufacturer(alphanumericValue);
+                                    setModelType(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
                                 }}
-                                value={manufacturer} 
                             />
+    
+                            <Field
+                                placeholder="Manufacturer"
+                                value={manufacturer}
+                                onChangeText={text => {
+                                    setManufacturer(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
+                                }}
+                            />
+    
+                            {/* Device Selection Dropdown */}
+                            <Text style={styles.modalLabel}>Choose Base Device:</Text>
+                            <TouchableOpacity
+                                style={styles.dropdownToggle}
+                                onPress={() => setIsDropdownOpen(prev => !prev)}
+                            >
+                                <Text style={[
+                                    styles.dropdownToggleText,
+                                    !selectedDevice && { color: theme.colors.disabled }
+                                ]}>
+                                    {selectedDevice ? selectedDevice.deviceName : '-- Select Device --'}
+                                </Text>
+                            </TouchableOpacity>
+    
+                            {isDropdownOpen && (
+                                <View style={styles.dropdownList}>
+                                    {drop.map(d => (
+                                        <TouchableOpacity
+                                            key={d.deviceId}
+                                            style={styles.dropdownItem}
+                                            onPress={() => {
+                                                setSelectedDevice(d);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            <Text style={styles.dropdownItemText}>
+                                                {d.deviceName}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+    
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
                                     onPress={handleCloseModelModal}
                                 >
                                     <Text style={styles.modalButtonText}>Cancel</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={styles.modalButton}
-                                    onPress={handleSaveModel}
+                                    onPress={() => {
+                                        handleSaveModel({
+                                            baseDeviceId: selectedDevice?.deviceId // Send device ID instead of object
+                                        });
+                                    }}
                                 >
                                     <Text style={styles.modalButtonText}>Save</Text>
                                 </TouchableOpacity>
@@ -766,7 +919,6 @@ const ConfigurationPage = props => {
             </View>
         );
     };
-
     const renderCheckpoints = () => {
         if (loading) {
             return (
@@ -787,7 +939,7 @@ const ConfigurationPage = props => {
                     {checkpoints.length > 0 ? (
                         checkpoints.map((checkpoint, index) => (
                             <View key={index} style={styles.card}>
-                                <Text style={styles.cardTitle}>{checkpoint.checkpointName || 'Unknown Checkpoint'}</Text>
+                                <Text style={styles.cardTitle}>{checkpoint.checkPointDetails || 'Unknown Checkpoint'}</Text>
                                 <Text style={styles.cardDescription}>Category: {checkpoint.category || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Description: {checkpoint.description || 'N/A'}</Text>
                                 <View style={styles.actionButtons}>
