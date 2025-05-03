@@ -605,6 +605,19 @@ const ConfigurationPage = props => {
         );
     };
 
+    const fetchCheckPoints = async () => {
+        try {
+            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {operationFlag: 3});
+            if (result.status === 200) {
+                console.log('Checkpoints fetched successfully:', result.data);
+            }
+        } catch (error) {
+            console.error('Error fetching checkpoints:', error);
+            Alert.alert('Error', error.message || 'Failed to fetch checkpoints');
+        }
+    }
+    fetchCheckPoints();
+
     // Render Functions
     const renderDeviceList = () => {
         const uniqueDeviceList = deviceList.length > 0 ?
