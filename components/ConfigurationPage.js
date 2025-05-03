@@ -38,7 +38,7 @@ const ConfigurationPage = props => {
     const theme = useTheme();
     const [loading, setLoading] = useState(false);
     const [activeSection, setActiveSection] = useState('deviceList');
-    
+
     // Device List States
     const [deviceList, setDeviceList] = useState([]);
     const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
@@ -47,7 +47,7 @@ const ConfigurationPage = props => {
     const [serialNumber, setSerialNumber] = useState('');
     const [status, setStatus] = useState('');
     const [editingDeviceId, setEditingDeviceId] = useState(null);
-    
+
     // Device Models States
     const [deviceModels, setDeviceModels] = useState([]);
     const [isModelModalOpen, setIsModelModalOpen] = useState(false);
@@ -55,7 +55,7 @@ const ConfigurationPage = props => {
     const [modelType, setModelType] = useState('');
     const [manufacturer, setManufacturer] = useState('');
     const [editingModelId, setEditingModelId] = useState(null);
-    
+
     // Checkpoints States
     const [checkpoints, setCheckpoints] = useState([]);
     const [isCheckpointModalOpen, setIsCheckpointModalOpen] = useState(false);
@@ -63,9 +63,9 @@ const ConfigurationPage = props => {
     const [category, setCategory] = useState('');
     const [description, setDescription] = useState('');
     const [editingCheckpointId, setEditingCheckpointId] = useState(null);
-    const [drop , setDrop] = useState([]);
-    const [ selectedDevice, setSelectedDevice] = useState (null);
-   
+    const [drop, setDrop] = useState([]);
+    const [selectedDevice, setSelectedDevice] = useState(null);
+
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     const styles = StyleSheet.create({
@@ -74,36 +74,36 @@ const ConfigurationPage = props => {
             color: theme.colors.onBackground,
             marginTop: 12,
             marginBottom: 4,
-          },
-          dropdownToggle: {
+        },
+        dropdownToggle: {
             borderWidth: 1,
             borderColor: theme.colors.disabled,
             borderRadius: 6,
             paddingHorizontal: 12,
             paddingVertical: 10,
             marginBottom: 4,
-          },
-          dropdownToggleText: {
+        },
+        dropdownToggleText: {
             fontSize: 14,
-          },
-          dropdownList: {
+        },
+        dropdownList: {
             maxHeight: 150,
             borderWidth: 1,
             borderColor: theme.colors.disabled,
             borderRadius: 6,
             backgroundColor: theme.colors.surface,
             marginBottom: 12,
-          },
-          dropdownItem: {
+        },
+        dropdownItem: {
             paddingHorizontal: 12,
             paddingVertical: 10,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.disabled,
-          },
-          dropdownItemText: {
+        },
+        dropdownItemText: {
             fontSize: 14,
             color: theme.colors.onBackground,
-          },
+        },
         container: {
             flex: 1,
         },
@@ -290,12 +290,12 @@ const ConfigurationPage = props => {
                 case 'deviceModels':
                     // Fetch device models
                     const modelResponse = await axios.post(`${QC_API}GetConfigData`);
-                    const dropDown = modelResponse.data.deviceMasterLists.length > 0 ? 
-                    modelResponse.data.deviceMasterLists.filter((device, index, self) => 
-                      index === self.findIndex(t => t.deviceName === device.deviceName)
-                    ) 
-                  : [];
-                  setDrop(dropDown);
+                    const dropDown = modelResponse.data.deviceMasterLists.length > 0 ?
+                        modelResponse.data.deviceMasterLists.filter((device, index, self) =>
+                            index === self.findIndex(t => t.deviceName === device.deviceName)
+                        )
+                        : [];
+                    setDrop(dropDown);
                     setDeviceModels(modelResponse.data.deviceMasterLists || []);
                     break;
                 case 'checkpoints':
@@ -360,8 +360,8 @@ const ConfigurationPage = props => {
                 result = await axios.put(`${QC_API}/UpdateDevice/${editingDeviceId}`, deviceData);
                 if (result.status === 200) {
                     Alert.alert('Success', 'Device updated successfully');
-                    setDeviceList(prevList => 
-                        prevList.map(device => 
+                    setDeviceList(prevList =>
+                        prevList.map(device =>
                             device.id === editingDeviceId ? { ...device, ...deviceData } : device
                         )
                     );
@@ -374,7 +374,7 @@ const ConfigurationPage = props => {
                     setDeviceList(prevList => [...prevList, { id: result.data.id, ...deviceData }]);
                 }
             }
-            
+
             handleCloseDeviceModal();
         } catch (error) {
             console.error('Error saving device:', error);
@@ -455,8 +455,8 @@ const ConfigurationPage = props => {
                 result = await axios.put(`${QC_API}/UpdateModelType/${editingModelId}`, modelData);
                 if (result.status === 200) {
                     Alert.alert('Success', 'Model updated successfully');
-                    setDeviceModels(prevList => 
-                        prevList.map(model => 
+                    setDeviceModels(prevList =>
+                        prevList.map(model =>
                             model.id === editingModelId ? { ...model, ...modelData } : model
                         )
                     );
@@ -469,7 +469,7 @@ const ConfigurationPage = props => {
                     setDeviceModels(prevList => [...prevList, { id: result.data.id, ...modelData }]);
                 }
             }
-            
+
             handleCloseModelModal();
         } catch (error) {
             console.error('Error saving model:', error);
@@ -510,7 +510,7 @@ const ConfigurationPage = props => {
     const handleOpenCheckpointModal = (checkpoint = null) => {
         console.log(checkpoint);
         if (checkpoint) {
-            
+            setCategory(checkpoint.categoryName || '');
             setCategory(checkpoint.category || '');
             setDescription(checkpoint.description || '');
             setEditingCheckpointId(checkpoint.id);
@@ -520,34 +520,60 @@ const ConfigurationPage = props => {
         }
         setIsCheckpointModalOpen(true);
     };
-   
+
     const resetCheckpointForm = () => {
         setCheckpointName('');
         setCategory('');
         setDescription('');
     };
-    
+
     const handleCloseCheckpointModal = () => {
         setIsCheckpointModalOpen(false);
         resetCheckpointForm();
     };
 
     const handleSaveCheckpoint = async () => {
-        
-                // Add new checkpoint
-                console.log(checkpointName);
 
-                result = await axios.post(`${QC_API}CRUD_CheckPoints`, {operationFlag : 0 , checkPointDetails : checkpointName});
-                console.log(result.status , "" , result.data);
-                if (result.status === 200) {
-                    Alert.alert('Success', 'Checkpoint added successfully');
-                    fetchData();
-                }
-            
-            
-            handleCloseCheckpointModal();
-        
+        // Add new checkpoint
+        console.log(checkpointName);
+
+        result = await axios.post(`${QC_API}CRUD_CheckPoints`, { operationFlag: 0, checkPointDetails: checkpointName });
+        console.log(result.status, "", result.data);
+        if (result.status === 200) {
+            Alert.alert('Success', 'Checkpoint added successfully');
+            fetchData();
+        }
+
+
+        handleCloseCheckpointModal();
+
     };
+
+
+    const handleEditCheckpoint = async (checkpointId, updatedName) => {
+        try {
+            console.log('Editing checkpoint', checkpointId, updatedName);
+            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {
+                operationFlag: 1,            // 1 = update
+                checkPointId: checkpointId,  // which checkpoint to edit
+                checkPointDetails: updatedName
+            });
+
+            console.log(result.status, result.data);
+            if (result.status === 200) {
+                Alert.alert('Success', 'Checkpoint updated successfully');
+                fetchData();                // re-fetch your list
+            } else {
+                Alert.alert('Error', 'Unexpected response status: ' + result.status);
+            }
+        } catch (error) {
+            console.error('Failed to edit checkpoint:', error);
+            Alert.alert('Error', 'Could not update checkpoint. Please try again.');
+        } finally {
+            handleCloseCheckpointModal(); // close your edit modal
+        }
+    };
+
 
     const handleDeleteCheckpoint = async (checkpointId) => {
         Alert.alert(
@@ -580,11 +606,11 @@ const ConfigurationPage = props => {
 
     // Render Functions
     const renderDeviceList = () => {
-        const uniqueDeviceList = deviceList.length > 0 ? 
-        deviceList.filter((device, index, self) => 
-          index === self.findIndex(t => t.deviceName === device.deviceName)
-        ) 
-      : [];
+        const uniqueDeviceList = deviceList.length > 0 ?
+            deviceList.filter((device, index, self) =>
+                index === self.findIndex(t => t.deviceName === device.deviceName)
+            )
+            : [];
         if (loading) {
             return (
                 <View style={styles.loadingContainer}>
@@ -609,13 +635,13 @@ const ConfigurationPage = props => {
                                 <Text style={styles.cardDescription}>Serial: {device.deviceTypeId || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Status: {device.status || 'Unknown'}</Text>
                                 <View style={styles.actionButtons}>
-                                    <TouchableOpacity 
-                                        style={styles.actionButton} 
+                                    <TouchableOpacity
+                                        style={styles.actionButton}
                                         onPress={() => handleOpenDeviceModal(device)}
                                     >
                                         <FontAwesomeIcon icon={faPenToSquare} style={styles.editButton} size={20} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.actionButton}
                                         onPress={() => handleDeleteDevice(device.id)}
                                     >
@@ -641,46 +667,46 @@ const ConfigurationPage = props => {
                             <Text style={styles.modalTitle}>
                                 {editingDeviceId ? 'Edit Device' : 'Add New Device'}
                             </Text>
-                            <Field 
-                                placeholder="Device Name" 
+                            <Field
+                                placeholder="Device Name"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setDeviceName(alphanumericValue);
-                                }} 
-                                value={deviceName} 
+                                }}
+                                value={deviceName}
                             />
-                            <Field 
-                                placeholder="Device Model" 
+                            <Field
+                                placeholder="Device Model"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setDeviceModel(alphanumericValue);
                                 }}
-                                value={deviceModel} 
+                                value={deviceModel}
                             />
-                            <Field 
-                                placeholder="Serial Number" 
+                            <Field
+                                placeholder="Serial Number"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setSerialNumber(alphanumericValue);
                                 }}
-                                value={serialNumber} 
+                                value={serialNumber}
                             />
-                            <Field 
-                                placeholder="Status" 
+                            <Field
+                                placeholder="Status"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setStatus(alphanumericValue);
                                 }}
-                                value={status} 
+                                value={status}
                             />
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
                                     onPress={handleCloseDeviceModal}
                                 >
                                     <Text style={styles.modalButtonText}>Cancel</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={styles.modalButton}
                                     onPress={handleSaveDevice}
                                 >
@@ -702,16 +728,16 @@ const ConfigurationPage = props => {
                 </View>
             );
         }
-    
+
         // Filter models based on selectedDevice
         const filteredModels = selectedDevice
             ? deviceModels.filter(m => m.deviceName === selectedDevice.deviceName)
             : deviceModels;
-    
+
         return (
             <View style={styles.contentContainer}>
                 <Text style={styles.contentTitle}>Device Models</Text>
-    
+
                 {/* Dropdown for filtering */}
                 <Text style={styles.modalLabel}>Filter by Device Type:</Text>
                 <TouchableOpacity
@@ -725,7 +751,7 @@ const ConfigurationPage = props => {
                         {selectedDevice ? selectedDevice.deviceName : 'All Devices'}
                     </Text>
                 </TouchableOpacity>
-    
+
                 {isDropdownOpen && (
                     <ScrollView style={styles.dropdownList}>
                         <TouchableOpacity
@@ -751,7 +777,7 @@ const ConfigurationPage = props => {
                         ))}
                     </ScrollView>
                 )}
-    
+
                 <TouchableOpacity
                     style={styles.addButton}
                     onPress={handleOpenModelModal}
@@ -759,7 +785,7 @@ const ConfigurationPage = props => {
                     <FontAwesomeIcon icon={faPlus} color="white" size={16} />
                     <Text style={styles.addButtonText}>Add New Model</Text>
                 </TouchableOpacity>
-    
+
                 <ScrollView>
                     {filteredModels.length > 0 ? (
                         filteredModels.map((model, idx) => (
@@ -801,7 +827,7 @@ const ConfigurationPage = props => {
                         <Text>No device models found</Text>
                     )}
                 </ScrollView>
-    
+
                 {/* Model Modal */}
                 <Modal
                     visible={isModelModalOpen}
@@ -814,7 +840,7 @@ const ConfigurationPage = props => {
                             <Text style={styles.modalTitle}>
                                 {editingModelId ? 'Edit Model' : 'Add New Model'}
                             </Text>
-    
+
                             <Field
                                 placeholder="Model Name"
                                 value={modelName}
@@ -822,7 +848,7 @@ const ConfigurationPage = props => {
                                     setModelName(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
                                 }}
                             />
-    
+
                             <Field
                                 placeholder="Model Type"
                                 value={modelType}
@@ -830,7 +856,7 @@ const ConfigurationPage = props => {
                                     setModelType(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
                                 }}
                             />
-    
+
                             <Field
                                 placeholder="Manufacturer"
                                 value={manufacturer}
@@ -838,7 +864,7 @@ const ConfigurationPage = props => {
                                     setManufacturer(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
                                 }}
                             />
-    
+
                             {/* Device Selection Dropdown */}
                             <Text style={styles.modalLabel}>Choose Base Device:</Text>
                             <TouchableOpacity
@@ -852,7 +878,7 @@ const ConfigurationPage = props => {
                                     {selectedDevice ? selectedDevice.deviceName : '-- Select Device --'}
                                 </Text>
                             </TouchableOpacity>
-    
+
                             {isDropdownOpen && (
                                 <View style={styles.dropdownList}>
                                     {drop.map(d => (
@@ -871,7 +897,7 @@ const ConfigurationPage = props => {
                                     ))}
                                 </View>
                             )}
-    
+
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
@@ -920,13 +946,13 @@ const ConfigurationPage = props => {
                                 <Text style={styles.cardDescription}>Category: {checkpoint.category || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Description: {checkpoint.description || 'N/A'}</Text>
                                 <View style={styles.actionButtons}>
-                                    <TouchableOpacity 
-                                        style={styles.actionButton} 
+                                    <TouchableOpacity
+                                        style={styles.actionButton}
                                         onPress={() => handleOpenCheckpointModal(checkpoint)}
                                     >
                                         <FontAwesomeIcon icon={faPenToSquare} style={styles.editButton} size={20} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.actionButton}
                                         onPress={() => handleDeleteCheckpoint(checkpoint.id)}
                                     >
@@ -952,38 +978,38 @@ const ConfigurationPage = props => {
                             <Text style={styles.modalTitle}>
                                 {editingCheckpointId ? 'Edit Checkpoint' : 'Add New Checkpoint'}
                             </Text>
-                            <Field 
-                                placeholder="Checkpoint Name" 
+                            <Field
+                                placeholder="Checkpoint Name"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setCheckpointName(alphanumericValue);
-                                }} 
-                                value={checkpointName} 
+                                }}
+                                value={checkpointName}
                             />
-                            <Field 
-                                placeholder="Category" 
+                            <Field
+                                placeholder="Category"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setCategory(alphanumericValue);
                                 }}
-                                value={category} 
+                                value={category}
                             />
-                            <Field 
-                                placeholder="Description" 
+                            <Field
+                                placeholder="Description"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
                                     setDescription(alphanumericValue);
                                 }}
-                                value={description} 
+                                value={description}
                             />
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
                                     onPress={handleCloseCheckpointModal}
                                 >
                                     <Text style={styles.modalButtonText}>Cancel</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={styles.modalButton}
                                     onPress={handleSaveCheckpoint}
                                 >
