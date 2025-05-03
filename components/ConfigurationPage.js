@@ -67,7 +67,7 @@ const ConfigurationPage = props => {
     const [selectedDevice, setSelectedDevice] = useState(null);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
+    const [deviceTypeId,setDeviceTypeId] = useState('');
     const styles = StyleSheet.create({
         modalLabel: {
             fontSize: 16,
@@ -284,7 +284,7 @@ const ConfigurationPage = props => {
                     // Fetch device list
                     console.log(`${QC_API}GetConfigData`);
                     const deviceResponse = await axios.post(`${QC_API}GetConfigData`);
-                    console.log(deviceResponse.data.deviceMasterLists);
+                    console.log("deviceResponse", deviceResponse.data.deviceMasterLists);
                     setDeviceList(deviceResponse.data.deviceMasterLists || []);
                     break;
                 case 'deviceModels':
@@ -341,7 +341,8 @@ const ConfigurationPage = props => {
     };
 
     const handleSaveDevice = async () => {
-        if (!deviceName || !deviceModel || !serialNumber || !status) {
+        
+        if (!deviceName || !deviceTypeId || !serialNumber || !status) {
             Alert.alert('Error', 'All fields are required');
             return;
         }
@@ -368,10 +369,11 @@ const ConfigurationPage = props => {
                 }
             } else {
                 // Add new device
-                result = await axios.post(`${QC_API}/AddDevice`, deviceData);
+                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 0, deviceTypeId: parseInt(deviceTypeId), deviceName: deviceName });
                 if (result.status === 200) {
+                    console.log("result", result.data);
                     Alert.alert('Success', 'Device added successfully');
-                    setDeviceList(prevList => [...prevList, { id: result.data.id, ...deviceData }]);
+                    fetchData(); // re-fetch your list
                 }
             }
 
@@ -589,7 +591,7 @@ const ConfigurationPage = props => {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {operationFlag:2 , checkPointId : checkpointId});
+                            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, { operationFlag: 2, checkPointId: checkpointId });
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Checkpoint deleted successfully');
                                 fetchData(); // re-fetch your list
@@ -607,7 +609,7 @@ const ConfigurationPage = props => {
 
     const fetchCheckPoints = async () => {
         try {
-            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {operationFlag: 3});
+            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, { operationFlag: 3 });
             if (result.status === 200) {
                 console.log('Checkpoints fetched successfully:', result.data);
             }
@@ -690,14 +692,15 @@ const ConfigurationPage = props => {
                                 value={deviceName}
                             />
                             <Field
-                                placeholder="Device Model"
+                                placeholder="Device Type Id"
+                                keyboardType="number-pad"             // mobile numeric keyboard
                                 onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setDeviceModel(alphanumericValue);
+                                    // strip out any non‐digit
+                                    const digitsOnly = text.replace(/[^0-9]/g, '');
+                                    setDeviceTypeId(digitsOnly);
                                 }}
-                                value={deviceModel}
-                            />
-                            <Field
+                                value={deviceTypeId}
+                            /><Field
                                 placeholder="Serial Number"
                                 onChangeText={text => {
                                     const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
