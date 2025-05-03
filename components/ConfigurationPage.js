@@ -576,6 +576,7 @@ const ConfigurationPage = props => {
 
 
     const handleDeleteCheckpoint = async (checkpointId) => {
+        console.log('Deleting checkpoint', checkpointId);
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this checkpoint?',
@@ -588,10 +589,10 @@ const ConfigurationPage = props => {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.delete(`${QC_API}/DeleteCheckPoint/${checkpointId}`);
+                            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {operationFlag:2 , checkPointId : checkpointId});
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Checkpoint deleted successfully');
-                                setCheckpoints(prevList => prevList.filter(checkpoint => checkpoint.id !== checkpointId));
+                                fetchData(); // re-fetch your list
                             }
                         } catch (error) {
                             console.error('Error deleting checkpoint:', error);
@@ -954,7 +955,7 @@ const ConfigurationPage = props => {
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.actionButton}
-                                        onPress={() => handleDeleteCheckpoint(checkpoint.id)}
+                                        onPress={() => handleDeleteCheckpoint(checkpoint.checkPointId)}
                                     >
                                         <FontAwesomeIcon icon={faTrash} style={styles.deleteButton} size={20} />
                                     </TouchableOpacity>
