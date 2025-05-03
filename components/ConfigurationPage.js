@@ -320,7 +320,7 @@ const ConfigurationPage = props => {
             setDeviceModel(device.deviceModel || '');
             setSerialNumber(device.serialNumber || '');
             setStatus(device.status || '');
-            setEditingDeviceId(device.id);
+            setEditingDeviceId(device.deviceId);
         } else {
             resetDeviceForm();
             setEditingDeviceId(null);
@@ -350,7 +350,7 @@ const ConfigurationPage = props => {
         try {
             const deviceData = {
                 deviceName,
-                deviceModel,
+                deviceTypeId,
                 serialNumber,
                 status,
             };
@@ -358,18 +358,15 @@ const ConfigurationPage = props => {
             let result;
             if (editingDeviceId) {
                 // Update existing device
-                result = await axios.put(`${QC_API}/UpdateDevice/${editingDeviceId}`, deviceData);
+                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag : 1 , deviceId : editingDeviceId, deviceTypeId : parseInt(deviceTypeId) , deviceName : deviceName});
                 if (result.status === 200) {
                     Alert.alert('Success', 'Device updated successfully');
-                    setDeviceList(prevList =>
-                        prevList.map(device =>
-                            device.id === editingDeviceId ? { ...device, ...deviceData } : device
-                        )
-                    );
+                    fetchData();
                 }
             } else {
                 // Add new device
                 result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 0, deviceTypeId: parseInt(deviceTypeId), deviceName: deviceName });
+                console.log("deviceTypeId", deviceTypeId, "deviceName", deviceName);
                 if (result.status === 200) {
                     console.log("result", result.data);
                     Alert.alert('Success', 'Device added successfully');
@@ -385,6 +382,7 @@ const ConfigurationPage = props => {
     };
 
     const handleDeleteDevice = async (deviceId) => {
+        console.log(`Deleting device with ID: ${deviceId}`);
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this device?',
@@ -397,10 +395,12 @@ const ConfigurationPage = props => {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.delete(`${QC_API}/DeleteDevice/${deviceId}`);
+                            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag:2 , deviceId : parseInt(deviceId) }); 
+                            console.log("result", result.data);
+                            console.log("result.status", result.status);
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Device deleted successfully');
-                                setDeviceList(prevList => prevList.filter(device => device.id !== deviceId));
+                                fetchData(); // re-fetch your list
                             }
                         } catch (error) {
                             console.error('Error deleting device:', error);
@@ -412,6 +412,21 @@ const ConfigurationPage = props => {
             ]
         );
     };
+
+    const fetchDeviceList = async () => {
+        try {
+            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 3 });
+            if (result.status === 200) {
+                console.log('Device list fetched successfully:', result.data);
+                
+            }
+        } catch (error) {
+            console.error('Error fetching device list:', error);
+            Alert.alert('Error', error.message || 'Failed to fetch device list');
+        }
+    }
+
+    fetchDeviceList();
 
     // Device Model Functions
     const handleOpenModelModal = (model = null) => {
@@ -659,7 +674,7 @@ const ConfigurationPage = props => {
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.actionButton}
-                                        onPress={() => handleDeleteDevice(device.id)}
+                                        onPress={() => handleDeleteDevice(device.deviceId)}
                                     >
                                         <FontAwesomeIcon icon={faTrash} style={styles.deleteButton} size={20} />
                                     </TouchableOpacity>
@@ -681,7 +696,10 @@ const ConfigurationPage = props => {
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>
-                                {editingDeviceId ? 'Edit Device' : 'Add New Device'}
+                                {
+                                console.log("editingDeviceId", editingDeviceId)}
+                                {
+                                editingDeviceId ? 'Edit Device' : 'Add New Device'}
                             </Text>
                             <Field
                                 placeholder="Device Name"
