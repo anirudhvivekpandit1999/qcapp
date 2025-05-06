@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,12 +21,23 @@ const MAIN_CONTENT_HEIGHT = height * 0.94;
 
 const buildUrl = (path) => QC_API + path;
 
+// Helper to validate username
+const validateUserName = (name) => {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return 'Username cannot be empty.';
+  if (trimmed.length < 3) return 'Username must be at least 3 characters.';
+  if (trimmed.length > 20) return 'Username must be at most 20 characters.';
+  if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) return 'Username can only include letters, numbers, dot, underscore, or hyphen.';
+  return null;
+};
+
 const UserManagement = ({ navigation }) => {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [newUserName, setNewUserName] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [editingUserId, setEditingUserId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -34,9 +45,8 @@ const UserManagement = ({ navigation }) => {
   }, []);
 
   const fetchUsers = async () => {
-    const url = buildUrl('CRUD_User');
     try {
-      const { data, status } = await axios.post(url, {
+      const { data, status } = await axios.post(buildUrl('CRUD_User'), {
         operationFlag: 3,
         userId: 0,
         userName: '',
@@ -44,9 +54,13 @@ const UserManagement = ({ navigation }) => {
         isActive: true,
       });
       if (status === 200 && data.userList) {
-        setUsers(data.userList);
+        // sort alphabetically by userName
+        const sorted = [...data.userList].sort((a, b) =>
+          a.userName.localeCompare(b.userName)
+        );
+        setUsers(sorted);
       } else {
-        Alert.alert('Error', 'Invalid users response');
+        throw new Error('Invalid users response');
       }
     } catch (err) {
       Alert.alert('Error', `Could not load users: ${err.message}`);
@@ -54,49 +68,56 @@ const UserManagement = ({ navigation }) => {
   };
 
   const fetchRoles = async () => {
-    const url = buildUrl('CRUD_Role');
     try {
-      const { data, status } = await axios.post(url, {
+      const { data, status } = await axios.post(buildUrl('CRUD_Role'), {
         operationFlag: 3,
         roleId: 0,
       });
       if (status === 200 && data.roleList) {
-        setRoles(data.roleList);
+        // sort alphabetically by roleName
+        const sorted = [...data.roleList].sort((a, b) =>
+          a.roleName.localeCompare(b.roleName)
+        );
+        setRoles(sorted);
       } else {
-        Alert.alert('Error', 'Invalid roles response');
+        throw new Error('Invalid roles response');
       }
     } catch (err) {
       Alert.alert('Error', `Could not load roles: ${err.message}`);
     }
   };
 
+  const resetForm = () => {
+    setNewUserName('');
+    setSelectedRoleId(null);
+    setEditingUserId(null);
+  };
+
   const addUser = async () => {
-    if (!newUserName.trim() || !selectedRoleId) {
-      Alert.alert('Validation', 'Username and role are required.');
+    const nameError = validateUserName(newUserName);
+    if (nameError) {
+      Alert.alert('Validation Error', nameError);
       return;
     }
-    const url = buildUrl('CRUD_User');
-    console.log(newUserName);
-    console.log(selectedRoleId);
-    const payload = {
-      operationFlag: 0,
-      userId: 0,
-      userName: newUserName,
-      password: `${newUserName}@123`,
-      roleId: selectedRoleId,
-      isActive: true,
-    };
+    if (!selectedRoleId) {
+      Alert.alert('Validation Error', 'Please select a role.');
+      return;
+    }
+
     try {
-      const { data, status } = await axios.post(url, payload);
+      const { data, status } = await axios.post(buildUrl('CRUD_User'), {
+        operationFlag: 0,
+        userId: 0,
+        userName: newUserName.trim(),
+        password: `${newUserName.trim()}@123`,
+        roleId: selectedRoleId,
+        isActive: true,
+      });
       if (status === 200) {
         const resp = data.statusResponse?.[0];
-        if (status === 200) {
-          Alert.alert('Success', resp.statusMessage || 'User added');
-          fetchUsers();
-          resetForm();
-        } else {
-          Alert.alert('Error', resp?.statusMessage || 'Failed to add user.');
-        }
+        Alert.alert('Success', resp.statusMessage || 'User added');
+        fetchUsers();
+        resetForm();
       }
     } catch (err) {
       Alert.alert('Error', `Failed to add user: ${err.message}`);
@@ -104,30 +125,30 @@ const UserManagement = ({ navigation }) => {
   };
 
   const updateUser = async () => {
-    if (!newUserName.trim() || !selectedRoleId) {
-      Alert.alert('Validation', 'Username and role are required.');
+    const nameError = validateUserName(newUserName);
+    if (nameError) {
+      Alert.alert('Validation Error', nameError);
       return;
     }
-    const url = buildUrl('CRUD_User');
-    const payload = {
-      operationFlag: 1,
-      userId: editingUserId,
-      userName: newUserName,
-      password: `${newUserName}@123`,
-      roleId: selectedRoleId,
-      isActive: true,
-    };
+    if (!selectedRoleId) {
+      Alert.alert('Validation Error', 'Please select a role.');
+      return;
+    }
+
     try {
-      const { data, status } = await axios.post(url, payload);
+      const { data, status } = await axios.post(buildUrl('CRUD_User'), {
+        operationFlag: 1,
+        userId: editingUserId,
+        userName: newUserName.trim(),
+        password: `${newUserName.trim()}@123`,
+        roleId: selectedRoleId,
+        isActive: true,
+      });
       if (status === 200) {
         const resp = data.statusResponse?.[0];
-        if (status === 200) {
-          Alert.alert('Success', resp.statusMessage || 'User updated');
-          fetchUsers();
-          resetForm();
-        } else {
-          Alert.alert('Error', resp?.statusMessage || 'Failed to update user.');
-        }
+        Alert.alert('Success', resp.statusMessage || 'User updated');
+        fetchUsers();
+        resetForm();
       }
     } catch (err) {
       Alert.alert('Error', `Failed to update user: ${err.message}`);
@@ -141,18 +162,18 @@ const UserManagement = ({ navigation }) => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const url = buildUrl('CRUD_User');
-          const payload = { operationFlag: 2, userId, userName: '', password: '', isActive: true };
           try {
-            const { data, status } = await axios.post(url, payload);
+            const { data, status } = await axios.post(buildUrl('CRUD_User'), {
+              operationFlag: 2,
+              userId,
+              userName: '',
+              password: '',
+              isActive: true,
+            });
             if (status === 200) {
               const resp = data.statusResponse?.[0];
-              if (status === 200) {
-                Alert.alert('Success', resp.statusMessage || 'User deleted');
-                fetchUsers();
-              } else {
-                Alert.alert('Error', resp?.statusMessage || 'Failed to delete user.');
-              }
+              Alert.alert('Success', resp.statusMessage || 'User deleted');
+              fetchUsers();
             }
           } catch (err) {
             Alert.alert('Error', `Failed to delete user: ${err.message}`);
@@ -168,11 +189,12 @@ const UserManagement = ({ navigation }) => {
     setSelectedRoleId(user.roleId || null);
   };
 
-  const resetForm = () => {
-    setNewUserName('');
-    setSelectedRoleId(null);
-    setEditingUserId(null);
-  };
+  const filteredUsers = useMemo(() => {
+    // filter on already sorted users
+    return users.filter(u =>
+      u.userName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [users, searchQuery]);
 
   const renderRole = ({ item }) => (
     <TouchableOpacity
@@ -205,6 +227,7 @@ const UserManagement = ({ navigation }) => {
       <Background>
         <Text style={[styles.header, { backgroundColor: darkRed }]}>User Management</Text>
         <View style={styles.mainContent}>
+          {/* Add/Edit Form */}
           <TextInput
             style={styles.input}
             placeholder="Enter Username"
@@ -221,17 +244,32 @@ const UserManagement = ({ navigation }) => {
             renderItem={renderRole}
             style={styles.roleList}
           />
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: darkRed }]} onPress={editingUserId ? updateUser : addUser}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: darkRed }]}
+            onPress={editingUserId ? updateUser : addUser}
+          >
             <Text style={styles.actionButtonText}>{editingUserId ? 'Update User' : 'Add User'}</Text>
           </TouchableOpacity>
+
+          {/* Search Bar */}
+          <TextInput
+            style={styles.input}
+            placeholder="Search Users"
+            placeholderTextColor="#aaa"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+
+          {/* User List */}
           <FlatList
-            data={users}
-            extraData={users}
+            data={filteredUsers}
+            extraData={[filteredUsers, users]}
             keyExtractor={item => item.userId.toString()}
             renderItem={renderUser}
-            contentContainerStyle={users.length === 0 ? styles.emptyContainer : null}
+            contentContainerStyle={filteredUsers.length === 0 ? styles.emptyContainer : null}
             ListEmptyComponent={<Text style={styles.emptyText}>No users found</Text>}
           />
+
           <TouchableOpacity style={styles.previousButton} onPress={() => navigation.navigate('Dashboard')}>
             <Text style={styles.previousButtonText}>← Dashboard</Text>
           </TouchableOpacity>
@@ -294,24 +332,12 @@ const styles = StyleSheet.create({
   userText: { fontSize: BUTTON_FONT_SIZE, color: '#000' },
   statusLabel: { fontSize: 12, marginTop: 4 },
   userButtons: { flexDirection: 'row' },
-  editButton: {
-    padding: width * 0.02,
-    borderRadius: 8,
-    marginLeft: width * 0.02,
-  },
+  editButton: { padding: width * 0.02, borderRadius: 8, marginLeft: width * 0.02 },
   editButtonText: { color: '#fff' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#999' },
-  previousButton: {
-    position: 'absolute',
-    bottom: height * 0.03,
-    left: width * 0.03,
-  },
-  previousButtonText: {
-    color: darkRed,
-    fontWeight: 'bold',
-    fontSize: BUTTON_FONT_SIZE,
-  },
+  previousButton: { position: 'absolute', bottom: height * 0.03, left: width * 0.03 },
+  previousButtonText: { color: darkRed, fontWeight: 'bold', fontSize: BUTTON_FONT_SIZE },
 });
 
 export default UserManagement;

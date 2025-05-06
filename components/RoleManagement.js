@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import axios from 'axios';
-import { QC_API } from '../public/config'; // adjust path if needed
+import { QC_API } from '../public/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -19,14 +19,31 @@ const HEADER_FONT_SIZE   = Math.round(width * 0.05);
 const SUBTITLE_FONT_SIZE = Math.round(width * 0.04);
 const INPUT_FONT_SIZE    = Math.round(width * 0.04);
 
+const validateRoleName = (name) => {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    return 'Role name cannot be empty.';
+  }
+  if (trimmed.length < 3) {
+    return 'Role name must be at least 3 characters.';
+  }
+  if (trimmed.length > 30) {
+    return 'Role name must be at most 30 characters.';
+  }
+  if (!/^[A-Za-z0-9 _-]+$/.test(trimmed)) {
+    return 'Only letters, numbers, spaces, hyphens and underscores are allowed.';
+  }
+  return null;
+};
+
 const RoleManagement = ({ navigation }) => {
   const theme = useTheme();
 
-  const [roles, setRoles]             = useState([]);
-  const [newRole, setNewRole]         = useState('');
-  const [editingRoleId, setEditingRoleId]     = useState(null);
+  const [roles, setRoles]                   = useState([]);
+  const [newRole, setNewRole]               = useState('');
+  const [editingRoleId, setEditingRoleId]   = useState(null);
   const [editingRoleName, setEditingRoleName] = useState('');
-  const [searchTerm, setSearchTerm]   = useState('');
+  const [searchTerm, setSearchTerm]         = useState('');
 
   useEffect(() => {
     fetchRoles();
@@ -39,7 +56,11 @@ const RoleManagement = ({ navigation }) => {
         roleId: 0,
       });
       if (status === 200 && Array.isArray(data.roleList)) {
-        setRoles(data.roleList);
+        // Sort roles alphabetically when fetching
+        const sortedRoles = [...data.roleList].sort((a, b) => 
+          a.roleName.localeCompare(b.roleName)
+        );
+        setRoles(sortedRoles);
       }
     } catch (err) {
       console.error(err);
@@ -47,9 +68,15 @@ const RoleManagement = ({ navigation }) => {
     }
   };
 
+  // Add alphabetical sorting to filtered results
+  const filteredRoles = roles
+    .filter(r => r.roleName.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => a.roleName.localeCompare(b.roleName));
+
   const addRole = async () => {
-    if (!newRole.trim()) {
-      Alert.alert('Error', 'Role name cannot be empty');
+    const error = validateRoleName(newRole);
+    if (error) {
+      Alert.alert('Validation Error', error);
       return;
     }
     try {
@@ -96,8 +123,9 @@ const RoleManagement = ({ navigation }) => {
   };
 
   const updateRole = async () => {
-    if (!editingRoleName.trim()) {
-      Alert.alert('Error', 'Role name cannot be empty');
+    const error = validateRoleName(editingRoleName);
+    if (error) {
+      Alert.alert('Validation Error', error);
       return;
     }
     try {
@@ -117,11 +145,6 @@ const RoleManagement = ({ navigation }) => {
     }
   };
 
-  // filter roles by search term (case-insensitive)
-  const filteredRoles = roles.filter(r =>
-    r.roleName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -137,7 +160,7 @@ const RoleManagement = ({ navigation }) => {
       alignSelf: 'flex-start',
     },
     backButtonText: {
-      color: "white",
+      color: 'white',
       fontSize: INPUT_FONT_SIZE,
       fontWeight: 'bold',
     },
@@ -170,7 +193,7 @@ const RoleManagement = ({ navigation }) => {
       marginLeft: width * 0.03,
     },
     addButtonText: {
-      color: "white",
+      color: 'white',
       fontWeight: 'bold',
     },
     searchContainer: {
@@ -210,14 +233,13 @@ const RoleManagement = ({ navigation }) => {
       borderRadius: 8,
     },
     roleButtonText: {
-      color: "white",
+      color: 'white',
       fontSize: INPUT_FONT_SIZE - 2,
     },
   });
 
   return (
     <View style={styles.container}>
-      {/* Back Button */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
@@ -227,7 +249,6 @@ const RoleManagement = ({ navigation }) => {
 
       <Text style={styles.header}>Role Management</Text>
 
-      {/* New Role Input */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -241,7 +262,6 @@ const RoleManagement = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -252,7 +272,6 @@ const RoleManagement = ({ navigation }) => {
         />
       </View>
 
-      {/* Roles List */}
       <ScrollView>
         {filteredRoles.map(item => (
           <View key={item.roleId} style={styles.roleItem}>

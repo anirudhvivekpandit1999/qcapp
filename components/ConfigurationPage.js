@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    TextInput,
 } from 'react-native';
 import Background from './Background';
 import axios from 'axios';
@@ -23,8 +24,6 @@ import {
     faPlus,
     faPenToSquare,
     faTrash,
-    faTimes,
-    faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 import Field from './Field';
 
@@ -39,20 +38,25 @@ const ConfigurationPage = props => {
     const [loading, setLoading] = useState(false);
     const [activeSection, setActiveSection] = useState('deviceList');
 
+    // Search states
+    const [searchQueryDevice, setSearchQueryDevice] = useState('');
+    const [searchQueryModel, setSearchQueryModel] = useState('');
+    const [searchQueryCheckpoint, setSearchQueryCheckpoint] = useState('');
+
     // Device List States
     const [deviceList, setDeviceList] = useState([]);
     const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
     const [deviceName, setDeviceName] = useState('');
-    const [deviceModel, setDeviceModel] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
     const [status, setStatus] = useState('');
     const [editingDeviceId, setEditingDeviceId] = useState(0);
+    const [deviceTypeId, setDeviceTypeId] = useState('');
 
     // Device Models States
     const [deviceModels, setDeviceModels] = useState([]);
     const [isModelModalOpen, setIsModelModalOpen] = useState(false);
     const [modelName, setModelName] = useState('');
-    const [modelType, setModelType] = useState(0);
+    const [modelType, setModelType] = useState('');
     const [manufacturer, setManufacturer] = useState('');
     const [editingModelId, setEditingModelId] = useState(null);
 
@@ -65,10 +69,18 @@ const ConfigurationPage = props => {
     const [editingCheckpointId, setEditingCheckpointId] = useState(null);
     const [drop, setDrop] = useState([]);
     const [selectedDevice, setSelectedDevice] = useState(null);
-
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [deviceTypeId,setDeviceTypeId] = useState('');
+
     const styles = StyleSheet.create({
+        searchInput: {
+            borderWidth: 1,
+            borderColor: theme.colors.disabled,
+            borderRadius: 6,
+            padding: 10,
+            marginBottom: 10,
+            color: theme.colors.onBackground,
+            backgroundColor: theme.colors.surface,
+        },
         modalLabel: {
             fontSize: 16,
             color: theme.colors.onBackground,
@@ -276,38 +288,96 @@ const ConfigurationPage = props => {
         fetchData();
     }, [activeSection]);
 
+    // Validation functions
+    const validateDeviceInputs = () => {
+        if (!deviceName.trim() || !deviceTypeId || !serialNumber.trim() || !status.trim()) {
+            Alert.alert('Error', 'All fields are required');
+            return false;
+        }
+        if (!/^\d+$/.test(deviceTypeId)) {
+            Alert.alert('Error', 'Device Type ID must be a number');
+            return false;
+        }
+        if (deviceName.length > 50) {
+            Alert.alert('Error', 'Device name must be less than 50 characters');
+            return false;
+        }
+        return true;
+    };
+
+    const validateModelInputs = () => {
+        if (!modelName.trim() || !modelType.trim() || !manufacturer.trim()) {
+            Alert.alert('Error', 'All fields are required');
+            return false;
+        }
+        if (!/^[a-zA-Z0-9\s-]+$/.test(modelName)) {
+            Alert.alert('Error', 'Model name contains invalid characters');
+            return false;
+        }
+        if (manufacturer.length > 50) {
+            Alert.alert('Error', 'Manufacturer name too long');
+            return false;
+        }
+        return true;
+    };
+
+    const validateCheckpointInputs = () => {
+        if (!checkpointName.trim()) {
+            Alert.alert('Error', 'Checkpoint name is required');
+            return false;
+        }
+        if (checkpointName.length > 100) {
+            Alert.alert('Error', 'Checkpoint name too long (max 100 chars)');
+            return false;
+        }
+        return true;
+    };
+
+    // Sanitization functions
+    const sanitizeAlphanumeric = (text) => text.replace(/[^a-zA-Z0-9\s-]/g, '');
+    const sanitizeNumbers = (text) => text.replace(/[^0-9]/g, '');
+
     const fetchData = async () => {
         setLoading(true);
         try {
             switch (activeSection) {
-                case 'deviceList':
-                    // Fetch device list
-                    console.log(`${QC_API}GetConfigData`);
+                case 'deviceList': {
                     const deviceResponse = await axios.post(`${QC_API}GetConfigData`);
-                    console.log("deviceResponse", deviceResponse.data.deviceMasterLists);
-                    setDeviceList(deviceResponse.data.deviceMasterLists || []);
+                    // Alphabetical by deviceName
+                    const sortedDevices = (deviceResponse.data.deviceMasterLists || []).sort((a, b) =>
+                        (a.deviceName || '').localeCompare(b.deviceName || '')
+                    );
+                    setDeviceList(sortedDevices);
                     break;
-                case 'deviceModels':
-                    // Fetch device models
+                }
+                case 'deviceModels': {
                     const modelResponse = await axios.post(`${QC_API}GetConfigData`);
-                    const dropDown = modelResponse.data.deviceMasterLists.length > 0 ?
-                        modelResponse.data.deviceMasterLists.filter((device, index, self) =>
+                    // Dropdown: unique device names, alphabetical
+                    const dropDown = (modelResponse.data.deviceMasterLists || [])
+                        .filter((device, index, self) =>
                             index === self.findIndex(t => t.deviceName === device.deviceName)
                         )
-                        : [];
+                        .sort((a, b) => (a.deviceName || '').localeCompare(b.deviceName || ''));
                     setDrop(dropDown);
-                    setDeviceModels(modelResponse.data.deviceMasterLists || []);
+                    // Device models: alphabetical by deviceTypeName
+                    const sortedModels = (modelResponse.data.deviceMasterLists || []).sort((a, b) =>
+                        (a.deviceTypeName || '').localeCompare(b.deviceTypeName || '')
+                    );
+                    setDeviceModels(sortedModels);
                     break;
-                case 'checkpoints':
-                    // Fetch checkpoints
+                }
+                case 'checkpoints': {
                     const checkpointResponse = await axios.post(`${QC_API}GetConfigData`);
-                    console.log(checkpointResponse.data.checkPointMasters);
-                    setCheckpoints(checkpointResponse.data.checkPointMasters || []);
+                    // Alphabetical by checkPointDetails
+                    const sortedCheckpoints = (checkpointResponse.data.checkPointMasters || []).sort((a, b) =>
+                        (a.checkPointDetails || '').localeCompare(b.checkPointDetails || '')
+                    );
+                    setCheckpoints(sortedCheckpoints);
                     break;
+                }
             }
         } catch (error) {
-            console.error('Error fetching data:', error);
-            Alert.alert('Error', 'Failed to fetch data. Please try again later.');
+            Alert.alert('Error', 'Failed to fetch data');
         } finally {
             setLoading(false);
         }
@@ -317,22 +387,22 @@ const ConfigurationPage = props => {
     const handleOpenDeviceModal = (device = null) => {
         if (device) {
             setDeviceName(device.deviceName || '');
-            setDeviceModel(device.deviceModel || '');
+            setDeviceTypeId(device.deviceTypeId?.toString() || '');
             setSerialNumber(device.serialNumber || '');
             setStatus(device.status || '');
             setEditingDeviceId(device.deviceId);
         } else {
             resetDeviceForm();
-            setEditingDeviceId(null);
         }
         setIsDeviceModalOpen(true);
     };
 
     const resetDeviceForm = () => {
         setDeviceName('');
-        setDeviceModel('');
+        setDeviceTypeId('');
         setSerialNumber('');
         setStatus('');
+        setEditingDeviceId(null);
     };
 
     const handleCloseDeviceModal = () => {
@@ -341,71 +411,48 @@ const ConfigurationPage = props => {
     };
 
     const handleSaveDevice = async () => {
-        
-        if (!deviceName || !deviceTypeId || !serialNumber || !status) {
-            Alert.alert('Error', 'All fields are required');
-            return;
-        }
+        if (!validateDeviceInputs()) return;
 
         try {
-            const deviceData = {
-                deviceName,
-                deviceTypeId,
-                serialNumber,
-                status,
+            const payload = {
+                operationFlag: editingDeviceId ? 1 : 0,
+                deviceId: editingDeviceId || 0,
+                deviceName: deviceName.trim(),
+                deviceTypeId: parseInt(deviceTypeId),
+                serialNumber: serialNumber.trim(),
+                status: status.trim()
             };
 
-            let result;
-            if (editingDeviceId) {
-                // Update existing device
-                result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { operationFlag : 1 , deviceId : parseInt(editingDeviceId), deviceName : deviceData.deviceName});
-                console.log(result.status);
-                                if (result.status === 200) {
-                    Alert.alert('Success', 'Device updated successfully');
-                    fetchData();
-                }
-            } else {
-                // Add new device
-                console.log("deviceName is ",deviceName , deviceData.deviceName)
-                result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { operationFlag: 0,  deviceName: deviceData.deviceName });
-                console.log("deviceTypeId", deviceTypeId, "deviceName", deviceName);
-                if (result.status === 200) {
-                    console.log("result", result.data);
-                    Alert.alert('Success', 'Device added successfully');
-                    fetchData(); // re-fetch your list
-                }
+            const { data, status: resStatus } = await axios.post(`${QC_API}CRUD_DeviceMaster`, payload);
+            if (resStatus === 200) {
+                Alert.alert('Success', data.statusResponse?.[0]?.statusMessage || 'Operation successful');
+                fetchData();
+                handleCloseDeviceModal();
             }
-
-            handleCloseDeviceModal();
         } catch (error) {
-            console.error('Error saving device:', error);
-            Alert.alert('Error', error.message || 'Failed to save device');
+            Alert.alert('Error', error.response?.data?.message || 'Failed to save device');
         }
     };
 
     const handleDeleteDevice = async (deviceId) => {
-        console.log(`Deleting device with ID: ${deviceId}`);
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this device?',
             [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
+                { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { operationFlag:2 , deviceId : parseInt(deviceId) }); 
-                            console.log("result", result.data);
-                            console.log("result.status", result.status);
+                            const result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { 
+                                operationFlag: 2, 
+                                deviceId: parseInt(deviceId) 
+                            });
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Device deleted successfully');
-                                fetchData(); // re-fetch your list
+                                fetchData();
                             }
                         } catch (error) {
-                            console.error('Error deleting device:', error);
                             Alert.alert('Error', error.message || 'Failed to delete device');
                         }
                     },
@@ -415,31 +462,15 @@ const ConfigurationPage = props => {
         );
     };
 
-    const fetchDeviceList = async () => {
-        try {
-            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 3 });
-            if (result.status === 200) {
-                console.log('Device list fetched successfully:', result.data);
-                
-            }
-        } catch (error) {
-            console.error('Error fetching device list:', error);
-            Alert.alert('Error', error.message || 'Failed to fetch device list');
-        }
-    }
-
-    fetchDeviceList();
-
     // Device Model Functions
     const handleOpenModelModal = (model = null) => {
         if (model) {
             setModelName(model.deviceName || '');
-            setModelType(model.deviceTypeId || '');
+            setModelType(model.deviceTypeId?.toString() || '');
             setManufacturer(model.manufacturer || '');
             setEditingModelId(model.deviceId);
         } else {
             resetModelForm();
-            setEditingModelId(null);
         }
         setIsModelModalOpen(true);
     };
@@ -448,6 +479,7 @@ const ConfigurationPage = props => {
         setModelName('');
         setModelType('');
         setManufacturer('');
+        setEditingModelId(null);
     };
 
     const handleCloseModelModal = () => {
@@ -456,71 +488,47 @@ const ConfigurationPage = props => {
     };
 
     const handleSaveModel = async () => {
-        if (!modelName || !modelType || !manufacturer) {
-            Alert.alert('Error', 'All fields are required');
-            return;
-        }
+        if (!validateModelInputs()) return;
 
         try {
-            const modelData = {
-                modelName,
-                modelType,
-                manufacturer,
+            const payload = {
+                operationFlag: editingModelId ? 1 : 0,
+                deviceId: editingModelId || 0,
+                deviceName: modelName.trim(),
+                deviceTypeId: parseInt(modelType),
+                manufacturer: manufacturer.trim()
             };
 
-            let result;
-            if (editingModelId) {
-                // Update existing model
-                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, {operationFlag:1 , deviceId : editingModelId , deviceTypeId :modelType , deviceName : modelName  });
-                if (result.status === 200) {
-                    Alert.alert('Success', 'Model updated successfully');
-                    fetchData();
-                }
-            } else {
-                // Add new model
-                                    console.log(modelName);
-                                    console.log(modelType);
-
-
-                
-                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 0, deviceTypeId: modelType, deviceName: modelName });
-                if (result.status === 200) {
-                    Alert.alert('Success', 'Model added successfully');
-                    fetchData();
-                    console.log(modelData.deviceName);
-                    console.log(modelName);
-                }
+            const { data, status: resStatus } = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, payload);
+            if (resStatus === 200) {
+                Alert.alert('Success', data.statusResponse?.[0]?.statusMessage || 'Operation successful');
+                fetchData();
+                handleCloseModelModal();
             }
-
-            handleCloseModelModal();
         } catch (error) {
-            console.error('Error saving model:', error);
-            Alert.alert('Error', error.message || 'Failed to save model');
+            Alert.alert('Error', error.response?.data?.message || 'Failed to save model');
         }
     };
 
     const handleDeleteModel = async (modelId) => {
-        console.log(modelId)
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this model?',
             [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
+                { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`,{operationFlag:2 , deviceId : modelId});
-                            console.log(result.status);
+                            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, {
+                                operationFlag: 2,
+                                deviceId: modelId
+                            });
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Model deleted successfully');
                                 fetchData();
                             }
                         } catch (error) {
-                            console.error('Error deleting model:', error);
                             Alert.alert('Error', error.message || 'Failed to delete model');
                         }
                     },
@@ -532,15 +540,13 @@ const ConfigurationPage = props => {
 
     // Checkpoint Functions
     const handleOpenCheckpointModal = (checkpoint = null) => {
-        console.log(checkpoint);
         if (checkpoint) {
-            setCategory(checkpoint.categoryName || '');
+            setCheckpointName(checkpoint.checkPointDetails || '');
             setCategory(checkpoint.category || '');
             setDescription(checkpoint.description || '');
-            setEditingCheckpointId(checkpoint.id);
+            setEditingCheckpointId(checkpoint.checkPointId);
         } else {
             resetCheckpointForm();
-            setEditingCheckpointId(null);
         }
         setIsCheckpointModalOpen(true);
     };
@@ -549,6 +555,7 @@ const ConfigurationPage = props => {
         setCheckpointName('');
         setCategory('');
         setDescription('');
+        setEditingCheckpointId(null);
     };
 
     const handleCloseCheckpointModal = () => {
@@ -557,69 +564,47 @@ const ConfigurationPage = props => {
     };
 
     const handleSaveCheckpoint = async () => {
+        if (!validateCheckpointInputs()) return;
 
-        // Add new checkpoint
-        console.log(checkpointName);
-
-        result = await axios.post(`${QC_API}CRUD_CheckPoints`, { operationFlag: 0, checkPointDetails: checkpointName });
-        console.log(result.status, "", result.data);
-        if (result.status === 200) {
-            Alert.alert('Success', 'Checkpoint added successfully');
-            fetchData();
-        }
-
-
-        handleCloseCheckpointModal();
-
-    };
-
-
-    const handleEditCheckpoint = async (checkpointId, updatedName) => {
         try {
-            console.log('Editing checkpoint', checkpointId, updatedName);
-            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {
-                operationFlag: 1,            // 1 = update
-                checkPointId: checkpointId,  // which checkpoint to edit
-                checkPointDetails: updatedName
-            });
+            const payload = {
+                operationFlag: editingCheckpointId ? 1 : 0,
+                checkPointId: editingCheckpointId || 0,
+                checkPointDetails: checkpointName.trim(),
+                category: category.trim(),
+                description: description.trim()
+            };
 
-            console.log(result.status, result.data);
-            if (result.status === 200) {
-                Alert.alert('Success', 'Checkpoint updated successfully');
-                fetchData();                // re-fetch your list
-            } else {
-                Alert.alert('Error', 'Unexpected response status: ' + result.status);
+            const { data, status: resStatus } = await axios.post(`${QC_API}CRUD_CheckPoints`, payload);
+            if (resStatus === 200) {
+                Alert.alert('Success', data.statusResponse?.[0]?.statusMessage || 'Operation successful');
+                fetchData();
+                handleCloseCheckpointModal();
             }
         } catch (error) {
-            console.error('Failed to edit checkpoint:', error);
-            Alert.alert('Error', 'Could not update checkpoint. Please try again.');
-        } finally {
-            handleCloseCheckpointModal(); // close your edit modal
+            Alert.alert('Error', error.response?.data?.message || 'Failed to save checkpoint');
         }
     };
 
-
     const handleDeleteCheckpoint = async (checkpointId) => {
-        console.log('Deleting checkpoint', checkpointId);
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this checkpoint?',
             [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
+                { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, { operationFlag: 2, checkPointId: checkpointId });
+                            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, {
+                                operationFlag: 2,
+                                checkPointId: checkpointId
+                            });
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Checkpoint deleted successfully');
-                                fetchData(); // re-fetch your list
+                                fetchData();
                             }
                         } catch (error) {
-                            console.error('Error deleting checkpoint:', error);
                             Alert.alert('Error', error.message || 'Failed to delete checkpoint');
                         }
                     },
@@ -629,26 +614,16 @@ const ConfigurationPage = props => {
         );
     };
 
-    const fetchCheckPoints = async () => {
-        try {
-            const result = await axios.post(`${QC_API}CRUD_CheckPoints`, { operationFlag: 3 });
-            if (result.status === 200) {
-                console.log('Checkpoints fetched successfully:', result.data);
-            }
-        } catch (error) {
-            console.error('Error fetching checkpoints:', error);
-            Alert.alert('Error', error.message || 'Failed to fetch checkpoints');
-        }
-    }
-    fetchCheckPoints();
-
     // Render Functions
     const renderDeviceList = () => {
-        const uniqueDeviceList = deviceList.length > 0 ?
-            deviceList.filter((device, index, self) =>
+        const filteredDevices = deviceList
+            .filter((device, index, self) =>
                 index === self.findIndex(t => t.deviceName === device.deviceName)
             )
-            : [];
+            .filter(device =>
+                device.deviceName?.toLowerCase()?.includes(searchQueryDevice.toLowerCase())
+            );
+
         if (loading) {
             return (
                 <View style={styles.loadingContainer}>
@@ -664,15 +639,22 @@ const ConfigurationPage = props => {
                     <FontAwesomeIcon icon={faPlus} color="white" size={16} />
                     <Text style={styles.addButtonText}>Add New Device</Text>
                 </TouchableOpacity>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search devices..."
+                    placeholderTextColor={theme.colors.placeholder}
+                    value={searchQueryDevice}
+                    onChangeText={setSearchQueryDevice}
+                />
+
                 <ScrollView>
-                    {uniqueDeviceList.length > 0 ? (
-                        uniqueDeviceList.map((device, index) => (
+                    {filteredDevices.length > 0 ? (
+                        filteredDevices.map((device, index) => (
                             <View key={index} style={styles.card}>
                                 <Text style={styles.cardTitle}>{device.deviceName || 'Unknown Device'}</Text>
-                                <Text style={styles.cardDescription}>deviceId: {device.deviceId || 'N/A'}</Text>
-
-                                <Text style={styles.cardDescription}>Model: {device.deviceTypeName || 'N/A'}</Text>
-                                <Text style={styles.cardDescription}>Serial: {device.deviceTypeId || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>ID: {device.deviceId || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>Type: {device.deviceTypeId || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>Serial: {device.serialNumber || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Status: {device.status || 'Unknown'}</Text>
                                 <View style={styles.actionButtons}>
                                     <TouchableOpacity
@@ -695,55 +677,35 @@ const ConfigurationPage = props => {
                     )}
                 </ScrollView>
 
-                {/* Device Modal */}
-                <Modal
-                    visible={isDeviceModalOpen}
-                    transparent={true}
-                    animationType="fade"
-                    onRequestClose={handleCloseDeviceModal}
-                >
+                <Modal visible={isDeviceModalOpen} transparent animationType="fade">
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>
-                                {
-                                console.log("editingDeviceId", editingDeviceId)}
-                                {
-                                editingDeviceId ? 'Edit Device' : 'Add New Device'}
-                                {
-                                console.log("editingDeviceId", editingDeviceId)}
+                                {editingDeviceId ? 'Edit Device' : 'Add New Device'}
                             </Text>
                             <Field
                                 placeholder="Device Name"
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setDeviceName(alphanumericValue);
-                                }}
                                 value={deviceName}
+                                onChangeText={text => setDeviceName(sanitizeAlphanumeric(text))}
+                                maxLength={50}
                             />
                             <Field
-                                placeholder="Device Type Id"
-                                keyboardType="number-pad"             // mobile numeric keyboard
-                                onChangeText={text => {
-                                    // strip out any non‐digit
-                                    const digitsOnly = text.replace(/[^0-9]/g, '');
-                                    setDeviceTypeId(digitsOnly);
-                                }}
+                                placeholder="Device Type ID"
+                                keyboardType="numeric"
                                 value={deviceTypeId}
-                            /><Field
+                                onChangeText={text => setDeviceTypeId(sanitizeNumbers(text))}
+                            />
+                            <Field
                                 placeholder="Serial Number"
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setSerialNumber(alphanumericValue);
-                                }}
                                 value={serialNumber}
+                                onChangeText={text => setSerialNumber(sanitizeAlphanumeric(text))}
+                                maxLength={50}
                             />
                             <Field
                                 placeholder="Status"
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setStatus(alphanumericValue);
-                                }}
                                 value={status}
+                                onChangeText={setStatus}
+                                maxLength={20}
                             />
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
@@ -767,6 +729,14 @@ const ConfigurationPage = props => {
     };
 
     const renderDeviceModels = () => {
+        const filteredModels = selectedDevice
+            ? deviceModels.filter(m => m.deviceName === selectedDevice.deviceName)
+            : deviceModels;
+
+        const searchedModels = filteredModels.filter(model =>
+            (model.deviceTypeName?.toLowerCase() ?? '').includes(searchQueryModel.toLowerCase())
+        );
+
         if (loading) {
             return (
                 <View style={styles.loadingContainer}>
@@ -775,26 +745,16 @@ const ConfigurationPage = props => {
             );
         }
 
-        // Filter models based on selectedDevice
-        const filteredModels = selectedDevice
-            ? deviceModels.filter(m => m.deviceName === selectedDevice.deviceName)
-            : deviceModels;
-
         return (
             <View style={styles.contentContainer}>
                 <Text style={styles.contentTitle}>Device Models</Text>
-
-                {/* Dropdown for filtering */}
                 <Text style={styles.modalLabel}>Filter by Device Type:</Text>
                 <TouchableOpacity
                     style={styles.dropdownToggle}
-                    onPress={() => setIsDropdownOpen(prev => !prev)}
+                    onPress={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
-                    <Text style={[
-                        styles.dropdownToggleText,
-                        !selectedDevice && { color: theme.colors.disabled }
-                    ]}>
-                        {selectedDevice ? selectedDevice.deviceName : 'All Devices'}
+                    <Text style={[styles.dropdownToggleText, !selectedDevice && { color: theme.colors.disabled }]}>
+                        {selectedDevice?.deviceName || 'All Devices'}
                     </Text>
                 </TouchableOpacity>
 
@@ -824,50 +784,39 @@ const ConfigurationPage = props => {
                     </ScrollView>
                 )}
 
-                <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={handleOpenModelModal}
-                >
+                <TouchableOpacity style={styles.addButton} onPress={handleOpenModelModal}>
                     <FontAwesomeIcon icon={faPlus} color="white" size={16} />
                     <Text style={styles.addButtonText}>Add New Model</Text>
                 </TouchableOpacity>
 
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search models..."
+                    placeholderTextColor={theme.colors.placeholder}
+                    value={searchQueryModel}
+                    onChangeText={setSearchQueryModel}
+                />
+
                 <ScrollView>
-                    {filteredModels.length > 0 ? (
-                        filteredModels.map((model, idx) => (
+                    {searchedModels.length > 0 ? (
+                        searchedModels.map((model, idx) => (
                             <View key={idx} style={styles.card}>
-                                <Text style={styles.cardTitle}>
-                                    {model.deviceTypeName || 'Unknown Model'}
-                                </Text>
-                                <Text style={styles.cardDescription}>
-                                    Id: {model.deviceId || 'N/A'}
-                                </Text>
-                                <Text style={styles.cardDescription}>
-                                    Type: {model.deviceTypeId || 'N/A'}
-                                </Text>
-                                <Text style={styles.cardDescription}>
-                                    Manufacturer: {model.manufacturer || 'N/A'}
-                                </Text>
+                                <Text style={styles.cardTitle}>{model.deviceTypeName || 'Unknown Model'}</Text>
+                                <Text style={styles.cardDescription}>ID: {model.deviceId || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>Type: {model.deviceTypeId || 'N/A'}</Text>
+                                <Text style={styles.cardDescription}>Manufacturer: {model.manufacturer || 'N/A'}</Text>
                                 <View style={styles.actionButtons}>
                                     <TouchableOpacity
                                         style={styles.actionButton}
                                         onPress={() => handleOpenModelModal(model)}
                                     >
-                                        <FontAwesomeIcon
-                                            icon={faPenToSquare}
-                                            style={styles.editButton}
-                                            size={20}
-                                        />
+                                        <FontAwesomeIcon icon={faPenToSquare} style={styles.editButton} size={20} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.actionButton}
-                                        onPress={() => handleDeleteModel(model.deviceTypeId)}
+                                        onPress={() => handleDeleteModel(model.deviceId)}
                                     >
-                                        <FontAwesomeIcon
-                                            icon={faTrash}
-                                            style={styles.deleteButton}
-                                            size={20}
-                                        />
+                                        <FontAwesomeIcon icon={faTrash} style={styles.deleteButton} size={20} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -877,76 +826,30 @@ const ConfigurationPage = props => {
                     )}
                 </ScrollView>
 
-                {/* Model Modal */}
-                <Modal
-                    visible={isModelModalOpen}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={handleCloseModelModal}
-                >
+                <Modal visible={isModelModalOpen} transparent animationType="fade">
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>
                                 {editingModelId ? 'Edit Model' : 'Add New Model'}
                             </Text>
-
                             <Field
                                 placeholder="Model Name"
                                 value={modelName}
-                                onChangeText={text => {
-                                    setModelName(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
-                                }}
+                                onChangeText={text => setModelName(sanitizeAlphanumeric(text))}
+                                maxLength={50}
                             />
-
                             <Field
                                 placeholder="Model Type"
                                 value={modelType}
-                                onChangeText={text => {
-                                    setModelType(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
-                                }}
+                                onChangeText={text => setModelType(sanitizeNumbers(text))}
+                                keyboardType="numeric"
                             />
-
                             <Field
                                 placeholder="Manufacturer"
                                 value={manufacturer}
-                                onChangeText={text => {
-                                    setManufacturer(text.replace(/[^a-zA-Z0-9-@.]/g, ''));
-                                }}
+                                onChangeText={text => setManufacturer(text.slice(0, 50))}
+                                maxLength={50}
                             />
-
-                            {/* Device Selection Dropdown */}
-                            <Text style={styles.modalLabel}>Choose Base Device:</Text>
-                            <TouchableOpacity
-                                style={styles.dropdownToggle}
-                                onPress={() => setIsDropdownOpen(prev => !prev)}
-                            >
-                                <Text style={[
-                                    styles.dropdownToggleText,
-                                    !selectedDevice && { color: theme.colors.disabled }
-                                ]}>
-                                    {selectedDevice ? selectedDevice.deviceName : '-- Select Device --'}
-                                </Text>
-                            </TouchableOpacity>
-
-                            {isDropdownOpen && (
-                                <View style={styles.dropdownList}>
-                                    {drop.map(d => (
-                                        <TouchableOpacity
-                                            key={d.deviceId}
-                                            style={styles.dropdownItem}
-                                            onPress={() => {
-                                                setSelectedDevice(d);
-                                                setIsDropdownOpen(false);
-                                            }}
-                                        >
-                                            <Text style={styles.dropdownItemText}>
-                                                {d.deviceName}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            )}
-
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
@@ -956,11 +859,7 @@ const ConfigurationPage = props => {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.modalButton}
-                                    onPress={() => {
-                                        handleSaveModel({
-                                            baseDeviceId: selectedDevice?.deviceId // Send device ID instead of object
-                                        });
-                                    }}
+                                    onPress={handleSaveModel}
                                 >
                                     <Text style={styles.modalButtonText}>Save</Text>
                                 </TouchableOpacity>
@@ -971,7 +870,12 @@ const ConfigurationPage = props => {
             </View>
         );
     };
+
     const renderCheckpoints = () => {
+        const filteredCheckpoints = checkpoints.filter(checkpoint =>
+            (checkpoint.checkPointDetails?.toLowerCase() ?? '').includes(searchQueryCheckpoint.toLowerCase())
+        );
+
         if (loading) {
             return (
                 <View style={styles.loadingContainer}>
@@ -987,9 +891,17 @@ const ConfigurationPage = props => {
                     <FontAwesomeIcon icon={faPlus} color="white" size={16} />
                     <Text style={styles.addButtonText}>Add New Checkpoint</Text>
                 </TouchableOpacity>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search checkpoints..."
+                    placeholderTextColor={theme.colors.placeholder}
+                    value={searchQueryCheckpoint}
+                    onChangeText={setSearchQueryCheckpoint}
+                />
+
                 <ScrollView>
-                    {checkpoints.length > 0 ? (
-                        checkpoints.map((checkpoint, index) => (
+                    {filteredCheckpoints.length > 0 ? (
+                        filteredCheckpoints.map((checkpoint, index) => (
                             <View key={index} style={styles.card}>
                                 <Text style={styles.cardTitle}>{checkpoint.checkPointDetails || 'Unknown Checkpoint'}</Text>
                                 <Text style={styles.cardDescription}>Category: {checkpoint.category || 'N/A'}</Text>
@@ -1015,13 +927,7 @@ const ConfigurationPage = props => {
                     )}
                 </ScrollView>
 
-                {/* Checkpoint Modal */}
-                <Modal
-                    visible={isCheckpointModalOpen}
-                    transparent={true}
-                    animationType="fade"
-                    onRequestClose={handleCloseCheckpointModal}
-                >
+                <Modal visible={isCheckpointModalOpen} transparent animationType="fade">
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>
@@ -1029,27 +935,21 @@ const ConfigurationPage = props => {
                             </Text>
                             <Field
                                 placeholder="Checkpoint Name"
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setCheckpointName(alphanumericValue);
-                                }}
                                 value={checkpointName}
+                                onChangeText={text => setCheckpointName(text.slice(0, 100))}
+                                maxLength={100}
                             />
                             <Field
                                 placeholder="Category"
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setCategory(alphanumericValue);
-                                }}
                                 value={category}
+                                onChangeText={setCategory}
+                                maxLength={50}
                             />
                             <Field
                                 placeholder="Description"
-                                onChangeText={text => {
-                                    const alphanumericValue = text.replace(/[^a-zA-Z0-9-@.]/g, '');
-                                    setDescription(alphanumericValue);
-                                }}
                                 value={description}
+                                onChangeText={text => setDescription(text.slice(0, 200))}
+                                maxLength={200}
                             />
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
@@ -1074,14 +974,10 @@ const ConfigurationPage = props => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case 'deviceList':
-                return renderDeviceList();
-            case 'deviceModels':
-                return renderDeviceModels();
-            case 'checkpoints':
-                return renderCheckpoints();
-            default:
-                return renderDeviceList();
+            case 'deviceList': return renderDeviceList();
+            case 'deviceModels': return renderDeviceModels();
+            case 'checkpoints': return renderCheckpoints();
+            default: return renderDeviceList();
         }
     };
 
@@ -1091,82 +987,43 @@ const ConfigurationPage = props => {
                 <View style={styles.background}>
                     <TouchableOpacity
                         style={styles.backButton}
-                        onPress={() => props.navigation.goBack()}>
+                        onPress={() => props.navigation.goBack()}
+                    >
                         <FontAwesomeIcon icon={faArrowLeft} style={styles.backIcon} />
                     </TouchableOpacity>
                     <Text style={styles.header}>Configuration</Text>
                     <View style={styles.mainContent}>
                         <View style={styles.sectionContainer}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.sectionButton,
-                                    activeSection === 'deviceList' && styles.activeSection,
-                                ]}
-                                onPress={() => setActiveSection('deviceList')}>
-                                <FontAwesomeIcon
-                                    icon={faComputer}
+                            {['deviceList', 'deviceModels', 'checkpoints'].map((section) => (
+                                <TouchableOpacity
+                                    key={section}
                                     style={[
-                                        styles.sectionIcon,
-                                        activeSection === 'deviceList' && styles.activeSectionIcon
+                                        styles.sectionButton,
+                                        activeSection === section && styles.activeSection
                                     ]}
-                                    size={24}
-                                />
-                                <Text
-                                    style={[
+                                    onPress={() => setActiveSection(section)}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={
+                                            section === 'deviceList' ? faComputer :
+                                            section === 'deviceModels' ? faComputerMouse : faListDots
+                                        }
+                                        style={[
+                                            styles.sectionIcon,
+                                            activeSection === section && styles.activeSectionIcon
+                                        ]}
+                                        size={24}
+                                    />
+                                    <Text style={[
                                         styles.sectionText,
-                                        activeSection === 'deviceList' && styles.activeSectionText,
+                                        activeSection === section && styles.activeSectionText
                                     ]}>
-                                    Device List
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.sectionButton,
-                                    activeSection === 'deviceModels' && styles.activeSection,
-                                ]}
-                                onPress={() => setActiveSection('deviceModels')}>
-                                <FontAwesomeIcon
-                                    icon={faComputerMouse}
-                                    style={[
-                                        styles.sectionIcon,
-                                        activeSection === 'deviceModels' && styles.activeSectionIcon
-                                    ]}
-                                    size={24}
-                                />
-                                <Text
-                                    style={[
-                                        styles.sectionText,
-                                        activeSection === 'deviceModels' && styles.activeSectionText,
-                                    ]}>
-                                    Device Models
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.sectionButton,
-                                    activeSection === 'checkpoints' && styles.activeSection,
-                                ]}
-                                onPress={() => setActiveSection('checkpoints')}>
-                                <FontAwesomeIcon
-                                    icon={faListDots}
-                                    style={[
-                                        styles.sectionIcon,
-                                        activeSection === 'checkpoints' && styles.activeSectionIcon
-                                    ]}
-                                    size={24}
-                                />
-                                <Text
-                                    style={[
-                                        styles.sectionText,
-                                        activeSection === 'checkpoints' && styles.activeSectionText,
-                                    ]}>
-                                    Checkpoints
-                                </Text>
-                            </TouchableOpacity>
+                                        {section === 'deviceList' ? 'Device List' :
+                                         section === 'deviceModels' ? 'Device Models' : 'Checkpoints'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-
                         {renderContent()}
                     </View>
                 </View>
