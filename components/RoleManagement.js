@@ -15,17 +15,18 @@ import { QC_API } from '../public/config'; // adjust path if needed
 
 const { width, height } = Dimensions.get('window');
 
-const HEADER_FONT_SIZE = Math.round(width * 0.05);
+const HEADER_FONT_SIZE   = Math.round(width * 0.05);
 const SUBTITLE_FONT_SIZE = Math.round(width * 0.04);
-const INPUT_FONT_SIZE = Math.round(width * 0.04);
+const INPUT_FONT_SIZE    = Math.round(width * 0.04);
 
 const RoleManagement = ({ navigation }) => {
   const theme = useTheme();
-  
-  const [roles, setRoles] = useState([]);
-  const [newRole, setNewRole] = useState('');
-  const [editingRoleId, setEditingRoleId] = useState(null);
+
+  const [roles, setRoles]             = useState([]);
+  const [newRole, setNewRole]         = useState('');
+  const [editingRoleId, setEditingRoleId]     = useState(null);
   const [editingRoleName, setEditingRoleName] = useState('');
+  const [searchTerm, setSearchTerm]   = useState('');
 
   useEffect(() => {
     fetchRoles();
@@ -67,7 +68,6 @@ const RoleManagement = ({ navigation }) => {
   };
 
   const deleteRole = (roleId) => {
-    console.log(roleId)
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this role?',
@@ -80,7 +80,7 @@ const RoleManagement = ({ navigation }) => {
             try {
               const { status } = await axios.post(QC_API + 'CRUD_Role', {
                 operationFlag: 2,
-                roleId : roleId,
+                roleId,
               });
               if (status === 200) {
                 fetchRoles();
@@ -117,6 +117,11 @@ const RoleManagement = ({ navigation }) => {
     }
   };
 
+  // filter roles by search term (case-insensitive)
+  const filteredRoles = roles.filter(r =>
+    r.roleName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -132,7 +137,7 @@ const RoleManagement = ({ navigation }) => {
       alignSelf: 'flex-start',
     },
     backButtonText: {
-      color:"white",
+      color: "white",
       fontSize: INPUT_FONT_SIZE,
       fontWeight: 'bold',
     },
@@ -167,6 +172,18 @@ const RoleManagement = ({ navigation }) => {
     addButtonText: {
       color: "white",
       fontWeight: 'bold',
+    },
+    searchContainer: {
+      marginBottom: height * 0.02,
+    },
+    searchInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: width * 0.03,
+      paddingVertical: height * 0.01,
+      color: theme.colors.onBackground,
+      fontSize: INPUT_FONT_SIZE,
     },
     roleItem: {
       flexDirection: 'row',
@@ -210,6 +227,7 @@ const RoleManagement = ({ navigation }) => {
 
       <Text style={styles.header}>Role Management</Text>
 
+      {/* New Role Input */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -223,8 +241,20 @@ const RoleManagement = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Search roles..."
+          placeholderTextColor={theme.colors.disabled}
+        />
+      </View>
+
+      {/* Roles List */}
       <ScrollView>
-        {roles.map(item => (
+        {filteredRoles.map(item => (
           <View key={item.roleId} style={styles.roleItem}>
             {editingRoleId === item.roleId ? (
               <TextInput

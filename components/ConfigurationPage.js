@@ -358,7 +358,7 @@ const ConfigurationPage = props => {
             let result;
             if (editingDeviceId) {
                 // Update existing device
-                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag : 1 , deviceId : parseInt(editingDeviceId), deviceTypeId : parseInt(deviceData.deviceTypeId) , deviceName : deviceData.deviceName});
+                result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { operationFlag : 1 , deviceId : parseInt(editingDeviceId), deviceName : deviceData.deviceName});
                 console.log(result.status);
                                 if (result.status === 200) {
                     Alert.alert('Success', 'Device updated successfully');
@@ -366,7 +366,8 @@ const ConfigurationPage = props => {
                 }
             } else {
                 // Add new device
-                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 0, deviceTypeId: parseInt(deviceTypeId), deviceName: deviceName });
+                console.log("deviceName is ",deviceName , deviceData.deviceName)
+                result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { operationFlag: 0,  deviceName: deviceData.deviceName });
                 console.log("deviceTypeId", deviceTypeId, "deviceName", deviceName);
                 if (result.status === 200) {
                     console.log("result", result.data);
@@ -396,7 +397,7 @@ const ConfigurationPage = props => {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag:2 , deviceId : parseInt(deviceId) }); 
+                            const result = await axios.post(`${QC_API}CRUD_DeviceMaster`, { operationFlag:2 , deviceId : parseInt(deviceId) }); 
                             console.log("result", result.data);
                             console.log("result.status", result.status);
                             if (result.status === 200) {
