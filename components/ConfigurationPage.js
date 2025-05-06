@@ -46,13 +46,13 @@ const ConfigurationPage = props => {
     const [deviceModel, setDeviceModel] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
     const [status, setStatus] = useState('');
-    const [editingDeviceId, setEditingDeviceId] = useState(null);
+    const [editingDeviceId, setEditingDeviceId] = useState(0);
 
     // Device Models States
     const [deviceModels, setDeviceModels] = useState([]);
     const [isModelModalOpen, setIsModelModalOpen] = useState(false);
     const [modelName, setModelName] = useState('');
-    const [modelType, setModelType] = useState('');
+    const [modelType, setModelType] = useState(0);
     const [manufacturer, setManufacturer] = useState('');
     const [editingModelId, setEditingModelId] = useState(null);
 
@@ -358,8 +358,9 @@ const ConfigurationPage = props => {
             let result;
             if (editingDeviceId) {
                 // Update existing device
-                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag : 1 , deviceId : editingDeviceId, deviceTypeId : parseInt(deviceTypeId) , deviceName : deviceName});
-                if (result.status === 200) {
+                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag : 1 , deviceId : parseInt(editingDeviceId), deviceTypeId : parseInt(deviceData.deviceTypeId) , deviceName : deviceData.deviceName});
+                console.log(result.status);
+                                if (result.status === 200) {
                     Alert.alert('Success', 'Device updated successfully');
                     fetchData();
                 }
@@ -431,10 +432,10 @@ const ConfigurationPage = props => {
     // Device Model Functions
     const handleOpenModelModal = (model = null) => {
         if (model) {
-            setModelName(model.modelName || '');
-            setModelType(model.modelType || '');
+            setModelName(model.deviceName || '');
+            setModelType(model.deviceTypeId || '');
             setManufacturer(model.manufacturer || '');
-            setEditingModelId(model.id);
+            setEditingModelId(model.deviceId);
         } else {
             resetModelForm();
             setEditingModelId(null);
@@ -469,21 +470,24 @@ const ConfigurationPage = props => {
             let result;
             if (editingModelId) {
                 // Update existing model
-                result = await axios.put(`${QC_API}/UpdateModelType/${editingModelId}`, modelData);
+                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, {operationFlag:1 , deviceId : editingModelId , deviceTypeId :modelType , deviceName : modelName  });
                 if (result.status === 200) {
                     Alert.alert('Success', 'Model updated successfully');
-                    setDeviceModels(prevList =>
-                        prevList.map(model =>
-                            model.id === editingModelId ? { ...model, ...modelData } : model
-                        )
-                    );
+                    fetchData();
                 }
             } else {
                 // Add new model
-                result = await axios.post(`${QC_API}/AddModelType`, modelData);
+                                    console.log(modelName);
+                                    console.log(modelType);
+
+
+                
+                result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`, { operationFlag: 0, deviceTypeId: modelType, deviceName: modelName });
                 if (result.status === 200) {
                     Alert.alert('Success', 'Model added successfully');
-                    setDeviceModels(prevList => [...prevList, { id: result.data.id, ...modelData }]);
+                    fetchData();
+                    console.log(modelData.deviceName);
+                    console.log(modelName);
                 }
             }
 
@@ -495,6 +499,7 @@ const ConfigurationPage = props => {
     };
 
     const handleDeleteModel = async (modelId) => {
+        console.log(modelId)
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this model?',
@@ -507,10 +512,11 @@ const ConfigurationPage = props => {
                     text: 'Delete',
                     onPress: async () => {
                         try {
-                            const result = await axios.delete(`${QC_API}/DeleteModelType/${modelId}`);
+                            const result = await axios.post(`${QC_API}CRUD_DeviceTypeMaster`,{operationFlag:2 , deviceId : modelId});
+                            console.log(result.status);
                             if (result.status === 200) {
                                 Alert.alert('Success', 'Model deleted successfully');
-                                setDeviceModels(prevList => prevList.filter(model => model.id !== modelId));
+                                fetchData();
                             }
                         } catch (error) {
                             console.error('Error deleting model:', error);
@@ -662,6 +668,8 @@ const ConfigurationPage = props => {
                         uniqueDeviceList.map((device, index) => (
                             <View key={index} style={styles.card}>
                                 <Text style={styles.cardTitle}>{device.deviceName || 'Unknown Device'}</Text>
+                                <Text style={styles.cardDescription}>deviceId: {device.deviceId || 'N/A'}</Text>
+
                                 <Text style={styles.cardDescription}>Model: {device.deviceTypeName || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Serial: {device.deviceTypeId || 'N/A'}</Text>
                                 <Text style={styles.cardDescription}>Status: {device.status || 'Unknown'}</Text>
@@ -700,6 +708,8 @@ const ConfigurationPage = props => {
                                 console.log("editingDeviceId", editingDeviceId)}
                                 {
                                 editingDeviceId ? 'Edit Device' : 'Add New Device'}
+                                {
+                                console.log("editingDeviceId", editingDeviceId)}
                             </Text>
                             <Field
                                 placeholder="Device Name"
@@ -829,6 +839,9 @@ const ConfigurationPage = props => {
                                     {model.deviceTypeName || 'Unknown Model'}
                                 </Text>
                                 <Text style={styles.cardDescription}>
+                                    Id: {model.deviceId || 'N/A'}
+                                </Text>
+                                <Text style={styles.cardDescription}>
                                     Type: {model.deviceTypeId || 'N/A'}
                                 </Text>
                                 <Text style={styles.cardDescription}>
@@ -847,7 +860,7 @@ const ConfigurationPage = props => {
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.actionButton}
-                                        onPress={() => handleDeleteModel(model.id)}
+                                        onPress={() => handleDeleteModel(model.deviceTypeId)}
                                     >
                                         <FontAwesomeIcon
                                             icon={faTrash}
